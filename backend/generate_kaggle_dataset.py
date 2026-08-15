@@ -1,7 +1,11 @@
+import os
 import pandas as pd
 import numpy as np
 
-def generate_healthcare_attrition_csv(filename='watson_healthcare_modified.csv', num_rows=1676):
+def generate_healthcare_attrition_csv(filename=None, num_rows=1676):
+    if filename is None:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        filename = os.path.join(base_dir, 'watson_healthcare_modified.csv')
     np.random.seed(42)
     
     # Generate realistic data

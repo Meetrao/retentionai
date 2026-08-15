@@ -1,8 +1,12 @@
 import pandas as pd
 import sqlite3
 from database import get_db_connection, insert_employee
+import os
 
-def import_csv_to_db(filename='watson_healthcare_modified.csv'):
+def import_csv_to_db(filename=None):
+    if filename is None:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        filename = os.path.join(base_dir, 'watson_healthcare_modified.csv')
     df = pd.read_csv(filename)
     
     conn = get_db_connection()

@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from database import init_db, authenticate, get_employee_data
+from database import init_db, authenticate, get_employee_data, DB_FILE
 from ml_models import AttritionAnalyzer
 import os
 
@@ -11,7 +11,7 @@ st.set_page_config(page_title="Strategic HR Core", layout="wide")
 
 try:
     from data_generator import generate_mock_data
-    if not os.path.exists("employee_data.db"):
+    if not os.path.exists(DB_FILE):
         generate_mock_data()
 except Exception as e:
     pass

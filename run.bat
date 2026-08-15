@@ -1,9 +1,11 @@
 @echo off
 echo Starting FastAPI Backend...
-start cmd /k ".\venv\Scripts\activate.bat && uvicorn main:app --port 8000"
+start cmd /k "cd backend && uvicorn main:app --port 8000"
+
+echo Starting Streamlit Dashboard...
+start cmd /k "cd backend && streamlit run app.py --server.port 8501 --server.headless true"
 
 echo Starting React Frontend...
-cd frontend
-start cmd /k "npm run dev"
+start cmd /k "cd frontend && npm run dev"
 
 echo Services have been launched.

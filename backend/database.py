@@ -2,7 +2,10 @@ import sqlite3
 import pandas as pd
 from security import encrypt_data, decrypt_data, hash_password, verify_password
 
-DB_FILE = "employee_data.db"
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_FILE = os.path.join(BASE_DIR, "employee_data.db")
 
 def get_db_connection():
     conn = sqlite3.connect(DB_FILE)
@@ -109,3 +112,14 @@ def authenticate(username, password):
     if user and verify_password(password, user['password_hash']):
         return dict(user)
     return None
+
+def update_employee_metrics(emp_id, working_hours, performance_rating, leave_count, task_completion, transfers):
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute('''
+        UPDATE employees
+        SET working_hours = ?, performance_rating = ?, leave_count = ?, task_completion = ?, transfers = ?
+        WHERE emp_id = ?
+    ''', (working_hours, performance_rating, leave_count, task_completion, transfers, emp_id))
+    conn.commit()
+    conn.close()

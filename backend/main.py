@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from database import authenticate, get_employee_data, init_db
+from database import authenticate, get_employee_data, init_db, update_employee_metrics
 from ml_models import AttritionAnalyzer
 import pandas as pd
 import json
@@ -130,3 +130,21 @@ def get_metrics():
         "recall": m['recall'] * 100,
         "features": [{"name": f[0].replace('_', ' ').title(), "importance": float(f[1])} for f in fi]
     }
+
+class UpdateEmployeeRequest(BaseModel):
+    working_hours: float
+    performance_rating: float
+    leave_count: int
+    task_completion: float
+    transfers: int
+
+@app.post("/api/employees/{emp_id}/update")
+def update_employee(emp_id: str, req: UpdateEmployeeRequest):
+    try:
+        update_employee_metrics(
+            emp_id, req.working_hours, req.performance_rating,
+            req.leave_count, req.task_completion, req.transfers
+        )
+        return {"status": "success", "message": "Employee metrics updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

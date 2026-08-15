@@ -7,3 +7,5 @@ bcrypt
 plotly
 matplotlib
 seaborn
+fastapi
+uvicorn

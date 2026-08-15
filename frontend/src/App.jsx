@@ -57,24 +57,45 @@ export default function App() {
   const [insightTime, setInsightTime] = useState('Last 6 Months');
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [selectedEmp, setSelectedEmp] = useState(null);
-  const [simValues, setSimValues] = useState({ working_hours: 40, performance_rating: 3, salary: 0 });
+  const [simValues, setSimValues] = useState({ working_hours: 40, performance_rating: 3, leave_count: 0, task_completion: 0, transfers: 0, salary: 0 });
   const [simRisk, setSimRisk] = useState(0);
 
   const openReviewModal = (emp) => {
     setSelectedEmp(emp);
-    setSimValues({ working_hours: emp.working_hours, performance_rating: emp.performance_rating, salary: emp.salary });
+    setSimValues({ 
+      working_hours: emp.working_hours, 
+      performance_rating: emp.performance_rating, 
+      leave_count: emp.leave_count, 
+      task_completion: emp.task_completion, 
+      transfers: emp.transfers, 
+      salary: emp.salary 
+    });
     setSimRisk(emp.predicted_risk);
     setReviewModalOpen(true);
   };
 
   useEffect(() => {
     if (selectedEmp) {
-      const hoursDiff = simValues.working_hours - selectedEmp.working_hours;
-      const perfDiff = selectedEmp.performance_rating - simValues.performance_rating;
-      let newRisk = selectedEmp.predicted_risk + (hoursDiff * 1.2) - (perfDiff * 12.5);
-      if (newRisk > 99.9) newRisk = 99.9;
-      if (newRisk < 1.1) newRisk = 1.1;
-      setSimRisk(newRisk);
+      const fetchRisk = async () => {
+        try {
+          const response = await axios.post('http://localhost:8000/api/predict', {
+            working_hours: parseFloat(simValues.working_hours),
+            leave_count: parseInt(simValues.leave_count),
+            performance_rating: parseFloat(simValues.performance_rating),
+            task_completion: parseFloat(simValues.task_completion),
+            transfers: parseInt(simValues.transfers)
+          });
+          setSimRisk(response.data.risk_score);
+        } catch (err) {
+          console.error("Error predicting risk", err);
+        }
+      };
+      
+      const timer = setTimeout(() => {
+        fetchRisk();
+      }, 250); // debounce API requests
+      
+      return () => clearTimeout(timer);
     }
   }, [simValues, selectedEmp]);
 
@@ -101,7 +122,11 @@ export default function App() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://localhost:8000/api/login', loginData);
+      const cleanData = {
+        username: loginData.username.trim(),
+        password: loginData.password.trim()
+      };
+      const res = await axios.post('http://localhost:8000/api/login', cleanData);
       const u = res.data;
       setUser(u);
       
@@ -119,6 +144,29 @@ export default function App() {
     setUser(null);
     setLoginData({ username: '', password: '' });
     setDashData(null);
+  };
+
+  const handleCommitRetentionPlan = async () => {
+    if (!selectedEmp) return;
+    try {
+      await axios.post(`http://localhost:8000/api/employees/${selectedEmp.emp_id}/update`, {
+        working_hours: parseFloat(simValues.working_hours),
+        performance_rating: parseFloat(simValues.performance_rating),
+        leave_count: parseInt(simValues.leave_count),
+        task_completion: parseFloat(simValues.task_completion),
+        transfers: parseInt(simValues.transfers)
+      });
+      
+      const res = await axios.get(`http://localhost:8000/api/dashboard?role=${user.role}`);
+      setDashData(res.data);
+      
+      setReviewModalOpen(false);
+      setSelectedEmp(null);
+      alert("Retention plan committed successfully! Metrics updated in core database.");
+    } catch (err) {
+      console.error("Error committing retention plan", err);
+      alert("Failed to commit retention plan. Please try again.");
+    }
   };
 
   if (!user) {
@@ -657,11 +705,209 @@ export default function App() {
              </table>
              <div style={{marginTop: '3rem'}}>
                <h3 style={{color: 'var(--text-primary)', fontSize: '1rem'}}>System Information</h3>
-               <p style={{color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.5rem'}}>Dataset Binding: employee_data.db (IBM Watson Healthcare Mapped Strategy)<br/>Security Wrapper: bcrypt + cryptography.fernet<br/>Authentication State: Stateless Front-channel</p>
+                        <p style={{color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.5rem'}}>Dataset Binding: employee_data.db (IBM Watson Healthcare Mapped Strategy)<br/>Security Wrapper: bcrypt + cryptography.fernet<br/>Authentication State: Stateless Front-channel</p>
              </div>
           </div>
         )}
       </main>
+
+      {reviewModalOpen && selectedEmp && (
+        <div className="modal-backdrop" onClick={() => setReviewModalOpen(false)}>
+          <div className="modal-container glass-panel" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title-group">
+                <h3>Retention Modeler: {selectedEmp.name}</h3>
+                <p>Employee ID: {selectedEmp.emp_id} · Department: {selectedEmp.department} · Current Role: {selectedEmp.role}</p>
+              </div>
+              <button className="modal-close-btn" onClick={() => setReviewModalOpen(false)} aria-label="Close modal">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              {/* Left Column: Interactive Parameters */}
+              <div>
+                <h4 className="modal-section-title">What-If Parameter Adjustments</h4>
+                
+                <div className="slider-group">
+                  <div className="slider-header">
+                    <span>Weekly Working Hours</span>
+                    <span><strong>{simValues.working_hours} hrs</strong> (Current: {selectedEmp.working_hours} hrs)</span>
+                  </div>
+                  <div className="slider-input-container">
+                    <input 
+                      type="range" 
+                      min="20" 
+                      max="80" 
+                      step="0.5"
+                      value={simValues.working_hours} 
+                      onChange={e => setSimValues({...simValues, working_hours: parseFloat(e.target.value)})}
+                    />
+                    <span className="slider-value-badge">{simValues.working_hours}</span>
+                  </div>
+                </div>
+
+                <div className="slider-group">
+                  <div className="slider-header">
+                    <span>Performance Rating Review</span>
+                    <span><strong>{simValues.performance_rating} / 4.0</strong> (Current: {selectedEmp.performance_rating})</span>
+                  </div>
+                  <div className="slider-input-container">
+                    <input 
+                      type="range" 
+                      min="1" 
+                      max="4" 
+                      step="0.1"
+                      value={simValues.performance_rating} 
+                      onChange={e => setSimValues({...simValues, performance_rating: parseFloat(e.target.value)})}
+                    />
+                    <span className="slider-value-badge">{(simValues.performance_rating).toFixed(1)}</span>
+                  </div>
+                </div>
+
+                <div className="slider-group">
+                  <div className="slider-header">
+                    <span>Leave Count (Annual)</span>
+                    <span><strong>{simValues.leave_count} leaves</strong> (Current: {selectedEmp.leave_count})</span>
+                  </div>
+                  <div className="slider-input-container">
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="50" 
+                      step="1"
+                      value={simValues.leave_count} 
+                      onChange={e => setSimValues({...simValues, leave_count: parseInt(e.target.value)})}
+                    />
+                    <span className="slider-value-badge">{simValues.leave_count}</span>
+                  </div>
+                </div>
+
+                <div className="slider-group">
+                  <div className="slider-header">
+                    <span>Task Completion Efficiency</span>
+                    <span><strong>{simValues.task_completion}%</strong> (Current: {selectedEmp.task_completion}%)</span>
+                  </div>
+                  <div className="slider-input-container">
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="100" 
+                      step="5"
+                      value={simValues.task_completion} 
+                      onChange={e => setSimValues({...simValues, task_completion: parseFloat(e.target.value)})}
+                    />
+                    <span className="slider-value-badge">{simValues.task_completion}%</span>
+                  </div>
+                </div>
+
+                <div className="slider-group">
+                  <div className="slider-header">
+                    <span>Team Transfers</span>
+                    <span><strong>{simValues.transfers} transfers</strong> (Current: {selectedEmp.transfers})</span>
+                  </div>
+                  <div className="slider-input-container">
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="5" 
+                      step="1"
+                      value={simValues.transfers} 
+                      onChange={e => setSimValues({...simValues, transfers: parseInt(e.target.value)})}
+                    />
+                    <span className="slider-value-badge">{simValues.transfers}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Right Column: Live Prediction & Decision Support */}
+              <div>
+                <h4 className="modal-section-title">AI Prognosis & Decision Support</h4>
+                
+                {/* Attrition Risk Percentage Indicator */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline' }}>
+                    <span style={{ 
+                      fontSize: '3.5rem', 
+                      fontWeight: '700', 
+                      color: simRisk > 60 ? 'var(--accent-red)' : (simRisk > 35 ? 'var(--accent-orange)' : 'var(--accent-emerald)'),
+                      lineHeight: 1 
+                    }}>
+                      {simRisk.toFixed(0)}
+                    </span>
+                    <span style={{ 
+                      fontSize: '1.5rem', 
+                      fontWeight: '600',
+                      color: simRisk > 60 ? 'var(--accent-red)' : (simRisk > 35 ? 'var(--accent-orange)' : 'var(--accent-emerald)')
+                    }}>%</span>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: '600', fontSize: '1rem', color: 'var(--text-primary)' }}>Attrition Probability</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Updated dynamically via ML Engine</div>
+                  </div>
+                </div>
+                
+                {/* Decision Support Card */}
+                <div className={`decision-support-card status-${simRisk > 60 ? 'high' : (simRisk > 35 ? 'medium' : 'low')}`}>
+                  {simRisk > 60 ? (
+                    <>
+                      <span className="decision-badge high">Immediate Action Required</span>
+                      <p className="decision-text">
+                        <strong>Critical Burnout Profile:</strong> The simulated parameters indicate extreme flight risk. 
+                        We recommend capping weekly hours, assigning a senior mentor, and initiating an urgent check-in.
+                      </p>
+                    </>
+                  ) : simRisk > 35 ? (
+                    <>
+                      <span className="decision-badge medium">Retention Nudge Advisable</span>
+                      <p className="decision-text">
+                        <strong>Rising Fatigue Signals:</strong> Moderate attrition risk detected. We recommend checking in on 
+                        workplace satisfaction and ensuring they are taking appropriate leave intervals.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <span className="decision-badge low">Stable Alignment</span>
+                      <p className="decision-text">
+                        <strong>Healthy Engagement:</strong> Low flight risk profile. Maintain current working arrangements, 
+                        promote recognition of their output, and schedule standard reviews.
+                      </p>
+                    </>
+                  )}
+                </div>
+                
+                {/* Personalized AI Suggestion Bubble */}
+                <div className="suggestion-bubble">
+                  <div className="suggestion-bubble-title">
+                    <Lightbulb size={16} />
+                    <span>Personalized AI Guidance</span>
+                  </div>
+                  <p className="suggestion-bubble-text">
+                    {simValues.working_hours > 45 ? (
+                      "Target: Reduce working hours. Capping hours to 40 per week reduces predicted attrition risk."
+                    ) : simValues.performance_rating < 3.0 ? (
+                      "Target: Engagement booster. Schedule a skill mentoring session to address task performance barriers."
+                    ) : simValues.leave_count < 10 ? (
+                      "Target: Work-life balance. Encourage the associate to utilize remaining paid leaves to reset."
+                    ) : (
+                      "All metrics look stable. No major friction factors identified for this profile."
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="modal-footer">
+              <button className="btn-outline" onClick={() => setReviewModalOpen(false)}>
+                Cancel
+              </button>
+              <button className="btn-primary" onClick={handleCommitRetentionPlan}>
+                Commit Retention Plan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
