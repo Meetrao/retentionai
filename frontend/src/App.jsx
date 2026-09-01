@@ -5,7 +5,8 @@ import {
   Lightbulb, Search, Bell, Moon, Sun, ArrowUpRight, 
   ArrowDownRight, CheckCircle2, ChevronRight, X, 
   Upload, FileText, BarChart3, Database, RefreshCw,
-  Clock, Award, Sparkles, UserCheck, Briefcase
+  Clock, Award, Sparkles, UserCheck, Briefcase, Building2,
+  CheckSquare, Filter, Layers, HelpCircle
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
@@ -37,6 +38,36 @@ export default function App() {
   const [modelMetrics, setModelMetrics] = useState(MODEL_BENCHMARKS);
   const [isBackendConnected, setIsBackendConnected] = useState(false);
 
+  // Intervention Tracker State (Committed retention plans)
+  const [committedPlans, setCommittedPlans] = useState([
+    {
+      id: "INT-101",
+      empId: "EMP-1082",
+      name: "Aarav Sharma",
+      department: "Engineering",
+      role: "Senior Fullstack Engineer",
+      action: "Base Salary Calibration (+12%) & On-Call Cap",
+      costInr: 342000,
+      riskBefore: 88,
+      riskAfter: 42,
+      date: "Today",
+      status: "Approved"
+    },
+    {
+      id: "INT-102",
+      empId: "EMP-1045",
+      name: "Rohan Verma",
+      department: "Product",
+      role: "Lead Product Designer",
+      action: "Fast-Track Lead Promotion & 3 Days WFH",
+      costInr: 150000,
+      riskBefore: 76,
+      riskAfter: 35,
+      date: "Yesterday",
+      status: "In Progress"
+    }
+  ]);
+
   // Employee State & Modals
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -50,6 +81,9 @@ export default function App() {
   const [simPromotionStatus, setSimPromotionStatus] = useState(true); // fast-track promotion
   const [simBonusAmount, setSimBonusAmount] = useState(150000); // ₹1.5 Lakhs
   const [liveSimResult, setLiveSimResult] = useState(null);
+
+  // Model Threshold Simulator State
+  const [decisionThreshold, setDecisionThreshold] = useState(0.40); // 0.40 threshold for high recall
 
   // Training pipeline simulation
   const [isRetraining, setIsRetraining] = useState(false);
@@ -212,10 +246,32 @@ export default function App() {
       }
       return e;
     }));
-    showToast(`Retention plan applied to ${simTargetEmp.name}! Risk reduced by ${simRiskDelta} points.`);
+
+    // Add to committed plans
+    if (simTargetEmp) {
+      setCommittedPlans(prev => [
+        {
+          id: `INT-${Date.now().toString().slice(-4)}`,
+          empId: simTargetEmp.id,
+          name: simTargetEmp.name,
+          department: simTargetEmp.department,
+          role: simTargetEmp.role,
+          action: `Compensation Calibration (+${simSalaryDelta}%) & OT Cap (${simOvertimeHours}h)`,
+          costInr: Math.round(simTargetEmp.salary * (simSalaryDelta / 100)) + simBonusAmount,
+          riskBefore: simTargetEmp.riskScore,
+          riskAfter: simulatedRisk.score,
+          date: "Just now",
+          status: "Approved"
+        },
+        ...prev
+      ]);
+    }
+
+    showToast(`Retention plan committed for ${simTargetEmp.name}! Risk reduced by ${simRiskDelta} pts.`);
   };
 
   const simRiskDelta = simTargetEmp ? simTargetEmp.riskScore - simulatedRisk.score : 0;
+  const highRiskCount = employees.filter(e => e.riskTier === 'Critical' || e.riskTier === 'High').length;
 
   // Render Risk Tier Badge
   const renderRiskBadge = (tier, score) => {
@@ -261,14 +317,14 @@ export default function App() {
           </div>
           <div className="brand-text">
             <h1>RetentionAI</h1>
-            <span>Workforce Intelligence</span>
+            <span>Enterprise ML Platform</span>
           </div>
         </div>
 
         {/* Role Selector */}
         <div className="role-badge-box">
           <div className="role-badge-label">
-            <span>Current Role View</span>
+            <span>Current Role Perspective</span>
             <UserCheck size={14} />
           </div>
           <select 
@@ -287,43 +343,81 @@ export default function App() {
 
         {/* Navigation Menu */}
         <nav className="nav-section">
-          <div className="nav-section-title">Core Intelligence</div>
+          <div className="nav-section-title">Workforce Intelligence</div>
+          
           <button 
             className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
             onClick={() => setActiveTab('dashboard')}
           >
-            <BarChart3 size={18} />
-            <span>Executive Dashboard</span>
+            <div className="nav-item-content">
+              <BarChart3 size={18} />
+              <span>Executive Dashboard</span>
+            </div>
           </button>
+
           <button 
             className={`nav-item ${activeTab === 'directory' ? 'active' : ''}`}
             onClick={() => setActiveTab('directory')}
           >
-            <Users size={18} />
-            <span>Flight Risk Explorer</span>
+            <div className="nav-item-content">
+              <Users size={18} />
+              <span>Flight Risk Explorer</span>
+            </div>
+            <span className="nav-pill">{highRiskCount} Risk</span>
           </button>
+
+          <button 
+            className={`nav-item ${activeTab === 'departments' ? 'active' : ''}`}
+            onClick={() => setActiveTab('departments')}
+          >
+            <div className="nav-item-content">
+              <Building2 size={18} />
+              <span>Department Radar</span>
+            </div>
+          </button>
+
           <button 
             className={`nav-item ${activeTab === 'simulator' ? 'active' : ''}`}
             onClick={() => setActiveTab('simulator')}
           >
-            <Sliders size={18} />
-            <span>What-If Simulator</span>
+            <div className="nav-item-content">
+              <Sliders size={18} />
+              <span>What-If Simulator</span>
+            </div>
+            <span className="nav-pill live">AI Live</span>
           </button>
 
-          <div className="nav-section-title" style={{ marginTop: 14 }}>Action & ML</div>
+          <div className="nav-section-title" style={{ marginTop: 14 }}>Strategy & Governance</div>
+          
           <button 
             className={`nav-item ${activeTab === 'playbook' ? 'active' : ''}`}
             onClick={() => setActiveTab('playbook')}
           >
-            <Lightbulb size={18} />
-            <span>Retention Playbook</span>
+            <div className="nav-item-content">
+              <Lightbulb size={18} />
+              <span>Retention Playbook</span>
+            </div>
           </button>
+
+          <button 
+            className={`nav-item ${activeTab === 'interventions' ? 'active' : ''}`}
+            onClick={() => setActiveTab('interventions')}
+          >
+            <div className="nav-item-content">
+              <CheckSquare size={18} />
+              <span>Intervention Tracker</span>
+            </div>
+            <span className="nav-pill live">{committedPlans.length} Active</span>
+          </button>
+
           <button 
             className={`nav-item ${activeTab === 'models' ? 'active' : ''}`}
             onClick={() => setActiveTab('models')}
           >
-            <Cpu size={18} />
-            <span>ML Model & Benchmarks</span>
+            <div className="nav-item-content">
+              <Cpu size={18} />
+              <span>ML Model & Benchmarks</span>
+            </div>
           </button>
         </nav>
 
@@ -341,12 +435,29 @@ export default function App() {
         {/* Top Header */}
         <header className="top-header">
           <div className="header-left">
+            <div className="breadcrumb-bar">
+              <span>RetentionAI</span>
+              <ChevronRight size={12} />
+              <span>{activeRole}</span>
+              <ChevronRight size={12} />
+              <span className="active">
+                {activeTab === 'dashboard' && 'Executive Dashboard'}
+                {activeTab === 'directory' && 'Flight Risk Explorer'}
+                {activeTab === 'departments' && 'Department Intelligence'}
+                {activeTab === 'simulator' && 'What-If Simulation'}
+                {activeTab === 'playbook' && 'Retention Strategy Catalog'}
+                {activeTab === 'interventions' && 'Intervention Tracker & ROI'}
+                {activeTab === 'models' && 'ML Model Intelligence & Benchmarks'}
+              </span>
+            </div>
             <h2 className="page-title">
-              {activeTab === 'dashboard' && 'Workforce Retention Overview'}
-              {activeTab === 'directory' && 'Employee Flight Risk Directory'}
+              {activeTab === 'dashboard' && 'Workforce Attrition Overview'}
+              {activeTab === 'directory' && 'Employee Risk Explorer'}
+              {activeTab === 'departments' && 'Departmental Risk Distribution'}
               {activeTab === 'simulator' && 'AI What-If Retention Simulator'}
-              {activeTab === 'playbook' && 'AI Retention Strategy Playbook'}
-              {activeTab === 'models' && 'Model Intelligence & Training Pipeline'}
+              {activeTab === 'playbook' && 'Prescriptive Retention Playbook'}
+              {activeTab === 'interventions' && 'Mitigation Actions & ROI Log'}
+              {activeTab === 'models' && 'Champion ML Architecture & Benchmarks'}
             </h2>
           </div>
 
@@ -364,7 +475,11 @@ export default function App() {
             <button className="icon-btn" onClick={toggleTheme} title="Toggle Dark/Light Mode">
               {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <button className="icon-btn" onClick={() => showToast(`${kpiData ? kpiData.high_risk_headcount : '166'} flight risk alerts pending review`)}>
+            <button className="icon-btn" onClick={() => {
+              setRiskFilter('Critical');
+              setActiveTab('directory');
+              showToast('Filtered directory by Critical Risk alerts');
+            }}>
               <Bell size={18} />
             </button>
             <div className="user-profile-badge">
@@ -413,7 +528,7 @@ export default function App() {
                   <div className="kpi-value-row">
                     <span className="kpi-value">{kpiData?.high_risk_headcount || "166"}</span>
                     <span className="kpi-delta positive-bad">
-                      <ArrowUpRight size={14} /> Urgent Review
+                      <ArrowUpRight size={14} /> Urgent Attention
                     </span>
                   </div>
                   <span className="kpi-subtext">Immediate intervention recommended</span>
@@ -461,7 +576,13 @@ export default function App() {
                       <BarChart3 size={18} color="#6366f1" />
                       Departmental Flight Risk & High-Risk Headcount
                     </h3>
-                    <span className="card-badge">Live ML Ensemble</span>
+                    <button 
+                      className="btn-secondary" 
+                      style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                      onClick={() => setActiveTab('departments')}
+                    >
+                      Deep Dive &rarr;
+                    </button>
                   </div>
                   <div style={{ height: 300, width: '100%' }}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -493,8 +614,15 @@ export default function App() {
                       <AlertTriangle size={18} color="#fb7185" />
                       Critical Attention Queue
                     </h3>
-                    <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: '0.75rem' }} onClick={() => setActiveTab('directory')}>
-                      View All ({employees.filter(e => e.riskTier === 'Critical' || e.riskTier === 'High').length})
+                    <button 
+                      className="btn-secondary" 
+                      style={{ padding: '4px 10px', fontSize: '0.75rem' }} 
+                      onClick={() => {
+                        setRiskFilter('Critical');
+                        setActiveTab('directory');
+                      }}
+                    >
+                      View All ({highRiskCount})
                     </button>
                   </div>
 
@@ -518,7 +646,7 @@ export default function App() {
                         <div style={{ textAlign: 'right' }}>
                           {renderRiskBadge(emp.riskTier, emp.riskScore)}
                           <div style={{ fontSize: '0.72rem', color: '#818cf8', marginTop: 4 }}>
-                            Inspect Profile &rarr;
+                            Inspect &rarr;
                           </div>
                         </div>
                       </div>
@@ -654,7 +782,55 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 3: WHAT-IF RETENTION SIMULATOR */}
+          {/* TAB 3: DEPARTMENT RADAR & CAPACITY */}
+          {activeTab === 'departments' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div className="grid-3-col">
+                {departmentData.map(d => (
+                  <div key={d.department} className="chart-card">
+                    <div className="card-title-row">
+                      <span style={{ fontWeight: 800, fontSize: '1.1rem' }}>{d.department}</span>
+                      <span className={`risk-badge ${d.avgRisk > 30 ? 'critical' : d.avgRisk > 20 ? 'medium' : 'low'}`}>
+                        {d.avgRisk}% Risk
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, background: 'var(--bg-input)', padding: 12, borderRadius: 10 }}>
+                      <div className="metric-pill">
+                        <span>Total Headcount</span>
+                        <span>{d.headCount} Employees</span>
+                      </div>
+                      <div className="metric-pill">
+                        <span>High Flight Risk</span>
+                        <span style={{ color: d.highRiskCount > 5 ? '#fb7185' : 'inherit' }}>{d.highRiskCount} Members</span>
+                      </div>
+                      <div className="metric-pill">
+                        <span>Average CTC</span>
+                        <span>₹{(d.avgSalary / 100000).toFixed(1)} LPA</span>
+                      </div>
+                      <div className="metric-pill">
+                        <span>Attrition Forecast</span>
+                        <span style={{ color: '#fb923c' }}>{d.attritionForecast}</span>
+                      </div>
+                    </div>
+
+                    <button 
+                      className="btn-secondary" 
+                      style={{ justifyContent: 'center' }}
+                      onClick={() => {
+                        setDeptFilter(d.department);
+                        setActiveTab('directory');
+                      }}
+                    >
+                      Filter {d.department} Team &rarr;
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: WHAT-IF RETENTION SIMULATOR */}
           {activeTab === 'simulator' && (
             <div className="simulator-layout">
               {/* Controls Column */}
@@ -840,13 +1016,13 @@ export default function App() {
                   onClick={() => simTargetEmp && applyIntervention(simTargetEmp.id)}
                 >
                   <CheckCircle2 size={18} />
-                  Commit Retention Plan to Workforce State
+                  Commit Retention Plan to Tracker
                 </button>
               </div>
             </div>
           )}
 
-          {/* TAB 4: RETENTION PLAYBOOK */}
+          {/* TAB 5: RETENTION PLAYBOOK */}
           {activeTab === 'playbook' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <div className="card-title-row">
@@ -903,7 +1079,79 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 5: ML MODEL INTELLIGENCE & TRAINING BENCHMARKS */}
+          {/* TAB 6: INTERVENTION TRACKER & ACTION LOGS */}
+          {activeTab === 'interventions' && (
+            <div className="chart-card">
+              <div className="card-title-row">
+                <div>
+                  <h3 className="card-title">
+                    <CheckSquare size={18} color="#10b981" />
+                    Active Retention Intervention Tracker
+                  </h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                    Log of committed management interventions, budget allocated, and before/after flight risk reduction.
+                  </p>
+                </div>
+                <button 
+                  className="btn-primary"
+                  onClick={() => setActiveTab('simulator')}
+                >
+                  <Sliders size={16} /> New Simulation
+                </button>
+              </div>
+
+              <div className="table-container" style={{ marginTop: 14 }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Plan ID</th>
+                      <th>Employee</th>
+                      <th>Department & Role</th>
+                      <th>Intervention Action</th>
+                      <th>Package Budget</th>
+                      <th>Risk Before → After</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {committedPlans.map(plan => (
+                      <tr key={plan.id}>
+                        <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#818cf8' }}>
+                          {plan.id}
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 700 }}>{plan.name}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{plan.empId}</div>
+                        </td>
+                        <td>
+                          <div>{plan.role}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{plan.department}</div>
+                        </td>
+                        <td style={{ fontWeight: 500 }}>
+                          {plan.action}
+                        </td>
+                        <td style={{ fontWeight: 700, color: '#38bdf8' }}>
+                          ₹{(plan.costInr / 100000).toFixed(2)} Lakhs
+                        </td>
+                        <td>
+                          <span style={{ color: '#fb7185', fontWeight: 700 }}>{plan.riskBefore}%</span>
+                          <span style={{ margin: '0 6px', color: 'var(--text-muted)' }}>&rarr;</span>
+                          <span style={{ color: '#34d399', fontWeight: 800 }}>{plan.riskAfter}%</span>
+                        </td>
+                        <td>
+                          <span className="risk-badge low">
+                            {plan.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 7: ML MODEL INTELLIGENCE & THRESHOLD OPTIMIZATION */}
           {activeTab === 'models' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               {/* Benchmark Summary */}
@@ -939,6 +1187,36 @@ export default function App() {
                   <div className="ml-metric-box">
                     <div className="val">{modelMetrics.recall}</div>
                     <div className="lbl">Recall (Flight Risk)</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Threshold Calibration Slider */}
+              <div className="chart-card">
+                <div className="card-title-row">
+                  <h3 className="card-title">
+                    <Sliders size={18} color="#38bdf8" />
+                    Interactive Decision Threshold Optimization
+                  </h3>
+                  <span className="card-badge">Threshold: {(decisionThreshold * 100).toFixed(0)}%</span>
+                </div>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  In HR retention, missing an at-risk employee (False Negative) is costly. Lowering the decision threshold catches more potential resignations early.
+                </p>
+                <div style={{ marginTop: 10 }}>
+                  <input 
+                    type="range" 
+                    min="0.25" 
+                    max="0.65" 
+                    step="0.05"
+                    value={decisionThreshold}
+                    onChange={(e) => setDecisionThreshold(Number(e.target.value))}
+                    className="custom-range"
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 6 }}>
+                    <span>0.25 (Max Recall / Early Warning)</span>
+                    <span style={{ color: '#818cf8', fontWeight: 700 }}>Balanced Operating Point (0.40)</span>
+                    <span>0.65 (High Precision)</span>
                   </div>
                 </div>
               </div>
