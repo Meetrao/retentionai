@@ -1,959 +1,1038 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useMemo } from 'react';
 import { 
-  AlertCircle, LayoutDashboard, TrendingUp, Frown, Activity, 
-  Users, Lightbulb, ShieldCheck, Download, ChevronRight, 
-  ArrowUpRight, ArrowDownRight, Bell, Search, Settings, 
-  Zap, Lock, User, Sun, Moon, Filter, Play, ActivitySquare, SlidersHorizontal, X, FileSearch, Upload
+  Users, TrendingUp, AlertTriangle, ShieldCheck, 
+  DollarSign, Activity, Cpu, Sliders, PlayCircle, 
+  Lightbulb, Search, Bell, Moon, Sun, ArrowUpRight, 
+  ArrowDownRight, CheckCircle2, ChevronRight, X, 
+  Upload, FileText, BarChart3, Database, RefreshCw,
+  Clock, Award, Sparkles, UserCheck, Briefcase
 } from 'lucide-react';
+import { 
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
+  Cell, LineChart, Line, CartesianGrid, AreaChart, Area 
+} from 'recharts';
+import { 
+  INITIAL_EMPLOYEES, 
+  DEPARTMENT_METRICS, 
+  RETENTION_PLAYBOOK, 
+  MODEL_BENCHMARKS 
+} from './data/mockData';
 import './App.css';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-
-const roleNavConfig = {
-  "HR Manager": {
-    intelligence: [
-      { name: 'Dashboard', icon: LayoutDashboard },
-      { name: 'Attrition Risk', icon: TrendingUp },
-      { name: 'Disengagement', icon: Frown },
-    ],
-    operations: [
-      { name: 'Directory', icon: Users },
-      { name: 'Recommendations', icon: Lightbulb },
-      { name: 'Access Control', icon: ShieldCheck }
-    ]
-  },
-  "Team Lead": {
-    intelligence: [
-      { name: 'Team Capacity', icon: Activity },
-      { name: 'Burnout Warnings', icon: AlertCircle },
-    ],
-    operations: [
-      { name: 'Team Directory', icon: Users }
-    ]
-  },
-  "Data Analyst": {
-    intelligence: [
-      { name: 'Data Pipeline (Anon)', icon: LayoutDashboard },
-      { name: 'Model Metrics', icon: Activity }
-    ],
-    operations: [
-      { name: 'Feature Tuning', icon: Settings },
-      { name: 'Model Re-training', icon: Zap }
-    ]
-  }
-};
 
 export default function App() {
-  const [user, setUser] = useState(null); // {username, role}
-  const [activeTab, setActiveTab] = useState('');
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [loginData, setLoginData] = useState({ username: '', password: '' });
-  const [error, setError] = useState('');
-  const [dashData, setDashData] = useState(null);
-  const [isDark, setIsDark] = useState(false);
-  const [dirSearch, setDirSearch] = useState('');
-  
-  // Advanced Simulation State
-  const [insightTime, setInsightTime] = useState('Last 6 Months');
-  const [reviewModalOpen, setReviewModalOpen] = useState(false);
-  const [selectedEmp, setSelectedEmp] = useState(null);
-  const [simValues, setSimValues] = useState({ working_hours: 40, performance_rating: 3, leave_count: 0, task_completion: 0, transfers: 0, salary: 0 });
-  const [simRisk, setSimRisk] = useState(0);
+  // Navigation & Theme State
+  const [activeRole, setActiveRole] = useState('HR Executive');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [deptFilter, setDeptFilter] = useState('All');
+  const [riskFilter, setRiskFilter] = useState('All');
 
-  const openReviewModal = (emp) => {
-    setSelectedEmp(emp);
-    setSimValues({ 
-      working_hours: emp.working_hours, 
-      performance_rating: emp.performance_rating, 
-      leave_count: emp.leave_count, 
-      task_completion: emp.task_completion, 
-      transfers: emp.transfers, 
-      salary: emp.salary 
-    });
-    setSimRisk(emp.predicted_risk);
-    setReviewModalOpen(true);
+  // Employee State & Modals
+  const [employees, setEmployees] = useState(INITIAL_EMPLOYEES);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [notification, setNotification] = useState(null);
+
+  // Simulator State (Initialized with Aria Chen EMP-1082)
+  const [simTargetEmp, setSimTargetEmp] = useState(INITIAL_EMPLOYEES[0]);
+  const [simSalaryDelta, setSimSalaryDelta] = useState(12); // +12% salary adjustment
+  const [simOvertimeHours, setSimOvertimeHours] = useState(15); // reduced to 15h
+  const [simRemoteDays, setSimRemoteDays] = useState(3); // 3 days/week
+  const [simPromotionStatus, setSimPromotionStatus] = useState(true); // fast-track promotion
+  const [simBonusAmount, setSimBonusAmount] = useState(5000);
+
+  // Dataset Ingestion Placeholder (Phase 2 readiness)
+  const [uploadedDatasetName, setUploadedDatasetName] = useState(null);
+  const [isTrainingSimulating, setIsTrainingSimulating] = useState(false);
+
+  // Helper notification trigger
+  const showToast = (msg) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(null), 3500);
   };
 
-  useEffect(() => {
-    if (selectedEmp) {
-      const fetchRisk = async () => {
-        try {
-          const response = await axios.post('http://localhost:8000/api/predict', {
-            working_hours: parseFloat(simValues.working_hours),
-            leave_count: parseInt(simValues.leave_count),
-            performance_rating: parseFloat(simValues.performance_rating),
-            task_completion: parseFloat(simValues.task_completion),
-            transfers: parseInt(simValues.transfers)
-          });
-          setSimRisk(response.data.risk_score);
-        } catch (err) {
-          console.error("Error predicting risk", err);
-        }
-      };
-      
-      const timer = setTimeout(() => {
-        fetchRisk();
-      }, 250); // debounce API requests
-      
-      return () => clearTimeout(timer);
-    }
-  }, [simValues, selectedEmp]);
-
-  useEffect(() => {
-    setIsLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    if (isDark) {
-      document.body.classList.add('dark-theme');
+  // Toggle Theme
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+    if (isDarkMode) {
+      document.documentElement.classList.add('light-theme');
     } else {
-      document.body.classList.remove('dark-theme');
-    }
-  }, [isDark]);
-
-  useEffect(() => {
-    if (user) {
-      axios.get(`http://localhost:8000/api/dashboard?role=${user.role}`)
-        .then(res => setDashData(res.data))
-        .catch(err => console.error("Error fetching dashboard data", err));
-    }
-  }, [user]);
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    try {
-      const cleanData = {
-        username: loginData.username.trim(),
-        password: loginData.password.trim()
-      };
-      const res = await axios.post('http://localhost:8000/api/login', cleanData);
-      const u = res.data;
-      setUser(u);
-      
-      if (u.role === 'HR Manager') setActiveTab('Dashboard');
-      else if (u.role === 'Team Lead') setActiveTab('Team Capacity');
-      else if (u.role === 'Data Analyst') setActiveTab('Data Pipeline (Anon)');
-      
-      setError('');
-    } catch (err) {
-      setError('Invalid credentials. Please try again.');
+      document.documentElement.classList.remove('light-theme');
     }
   };
 
-  const handleLogout = () => {
-    setUser(null);
-    setLoginData({ username: '', password: '' });
-    setDashData(null);
+  // Filtered employees for directory
+  const filteredEmployees = useMemo(() => {
+    return employees.filter(emp => {
+      const matchesSearch = 
+        emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        emp.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        emp.id.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesDept = deptFilter === 'All' || emp.department === deptFilter;
+      const matchesRisk = riskFilter === 'All' || emp.riskTier === riskFilter;
+      return matchesSearch && matchesDept && matchesRisk;
+    });
+  }, [employees, searchQuery, deptFilter, riskFilter]);
+
+  // Dynamic Risk Calculation in Simulator
+  const simulatedRisk = useMemo(() => {
+    if (!simTargetEmp) return { score: 50, tier: 'Medium', costSavings: 0 };
+    
+    // Baseline risk score
+    let baseScore = simTargetEmp.riskScore;
+    
+    // Impact of salary delta
+    const salaryImpact = (simSalaryDelta - 0) * 1.8; // each +1% reduces risk by 1.8 pts
+    
+    // Impact of overtime reduction
+    const otDiff = simTargetEmp.overtimeHoursMonth - simOvertimeHours;
+    const otImpact = otDiff * 0.9;
+    
+    // Impact of remote days
+    const remoteDiff = simRemoteDays - simTargetEmp.remoteDaysPerWeek;
+    const remoteImpact = remoteDiff * 4.5;
+    
+    // Impact of promotion
+    const promoImpact = simPromotionStatus ? 14 : 0;
+    
+    // Impact of retention bonus
+    const bonusImpact = (simBonusAmount / 1000) * 1.5;
+
+    let computedScore = Math.round(baseScore - salaryImpact - otImpact - remoteImpact - promoImpact - bonusImpact);
+    computedScore = Math.max(8, Math.min(96, computedScore));
+
+    let tier = 'Low';
+    if (computedScore >= 75) tier = 'Critical';
+    else if (computedScore >= 60) tier = 'High';
+    else if (computedScore >= 35) tier = 'Medium';
+
+    // Replacement cost calculation (~1.5x salary)
+    const replacementCost = Math.round(simTargetEmp.salary * 1.5);
+    const costSavings = Math.round(replacementCost * ((baseScore - computedScore) / 100));
+
+    return {
+      score: computedScore,
+      tier,
+      delta: baseScore - computedScore,
+      costSavings
+    };
+  }, [simTargetEmp, simSalaryDelta, simOvertimeHours, simRemoteDays, simPromotionStatus, simBonusAmount]);
+
+  // Handle Apply Intervention to Live State
+  const applyIntervention = (empId) => {
+    setEmployees(prev => prev.map(e => {
+      if (e.id === empId) {
+        return {
+          ...e,
+          riskScore: simulatedRisk.score,
+          riskTier: simulatedRisk.tier,
+          status: 'Intervention Plan Active'
+        };
+      }
+      return e;
+    }));
+    showToast(`Retention plan applied to ${simTargetEmp.name}! Risk reduced by ${simRiskDelta} points.`);
   };
 
-  const handleCommitRetentionPlan = async () => {
-    if (!selectedEmp) return;
-    try {
-      await axios.post(`http://localhost:8000/api/employees/${selectedEmp.emp_id}/update`, {
-        working_hours: parseFloat(simValues.working_hours),
-        performance_rating: parseFloat(simValues.performance_rating),
-        leave_count: parseInt(simValues.leave_count),
-        task_completion: parseFloat(simValues.task_completion),
-        transfers: parseInt(simValues.transfers)
-      });
-      
-      const res = await axios.get(`http://localhost:8000/api/dashboard?role=${user.role}`);
-      setDashData(res.data);
-      
-      setReviewModalOpen(false);
-      setSelectedEmp(null);
-      alert("Retention plan committed successfully! Metrics updated in core database.");
-    } catch (err) {
-      console.error("Error committing retention plan", err);
-      alert("Failed to commit retention plan. Please try again.");
-    }
-  };
+  const simRiskDelta = simTargetEmp ? simTargetEmp.riskScore - simulatedRisk.score : 0;
 
-  if (!user) {
+  // Render Risk Tier Badge
+  const renderRiskBadge = (tier, score) => {
+    const tierClass = tier.toLowerCase();
     return (
-      <div className={`app-container login-wrapper ${isLoaded ? 'loaded' : ''}`}>
-        <div className="bg-orb orb-1"></div>
-        <div className="bg-orb orb-2"></div>
-        <div className="login-card">
-          <div className="login-logo">
-            <Zap size={32} />
-          </div>
-          <h2 className="login-title">RETENTION AI</h2>
-          <p className="login-subtitle">Authenticate to access Command Center</p>
-          
-          {error && <div className="login-error">{error}</div>}
-          
-          <form onSubmit={handleLogin} className="login-form">
-            <div className="input-group">
-              <User size={18} className="input-icon" />
-              <input 
-                type="text" 
-                placeholder="Username" 
-                value={loginData.username}
-                onChange={e => setLoginData({...loginData, username: e.target.value})}
-                required
-              />
-            </div>
-            <div className="input-group">
-              <Lock size={18} className="input-icon" />
-              <input 
-                type="password" 
-                placeholder="Password" 
-                value={loginData.password}
-                onChange={e => setLoginData({...loginData, password: e.target.value})}
-                required
-              />
-            </div>
-            <button type="submit" className="btn-primary login-btn">Secure Login</button>
-          </form>
-
-          <div className="demo-credentials">
-            <strong>System Roles (Demo Logins):</strong>
-            <p>admin / admin (HR Manager)</p>
-            <p>lead / lead (Team Lead)</p>
-            <p>analyst / analyst (Data Analyst)</p>
-          </div>
-        </div>
-      </div>
+      <span className={`risk-badge ${tierClass}`}>
+        <span className="dot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }}></span>
+        {tier} {score ? `(${score}%)` : ''}
+      </span>
     );
-  }
-
-  const { intelligence, operations } = roleNavConfig[user.role] || roleNavConfig["HR Manager"];
+  };
 
   return (
-    <div className={`app-container ${isLoaded ? 'loaded' : ''}`}>
-      <div className="bg-orb orb-1"></div>
-      <div className="bg-orb orb-2"></div>
+    <div className={`app-container ${!isDarkMode ? 'light-theme' : ''}`}>
+      {/* Toast Notification */}
+      {notification && (
+        <div style={{
+          position: 'fixed',
+          top: 24,
+          right: 24,
+          zIndex: 9999,
+          background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+          color: '#ffffff',
+          padding: '12px 20px',
+          borderRadius: 12,
+          boxShadow: '0 10px 25px rgba(79, 70, 229, 0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          fontWeight: 600,
+          fontSize: '0.9rem'
+        }}>
+          <Sparkles size={18} />
+          {notification}
+        </div>
+      )}
 
-      <nav className="glass-sidebar" aria-label="Main Navigation">
-        <div className="sidebar-brand">
-          <div className="brand-logo">
-            <Zap size={24} className="brand-icon" />
+      {/* Sidebar Navigation */}
+      <aside className="sidebar">
+        <div className="brand-wrapper">
+          <div className="brand-icon-box">
+            <Cpu size={22} />
           </div>
           <div className="brand-text">
-            <div className="sidebar-title">RETENTION AI</div>
-            <div className="sidebar-subtitle">{user.role} View</div>
+            <h1>RetentionAI</h1>
+            <span>Workforce Intelligence</span>
           </div>
         </div>
 
-        <div className="sidebar-scroll">
-          <div className="sidebar-section">
-            <h2 className="sidebar-section-title">INTELLIGENCE</h2>
-            <ul className="nav-list">
-              {intelligence.map(item => (
-                <li key={item.name}>
-                  <button 
-                    className={`sidebar-item ${activeTab === item.name ? 'active' : ''}`}
-                    onClick={() => setActiveTab(item.name)}
-                  >
-                    <item.icon size={18} className="nav-icon" />
-                    <span>{item.name}</span>
-                    {activeTab === item.name && <ChevronRight size={16} className="active-indicator" />}
-                  </button>
-                </li>
-              ))}
-            </ul>
+        {/* Role Selector */}
+        <div className="role-badge-box">
+          <div className="role-badge-label">
+            <span>Current Role View</span>
+            <UserCheck size={14} />
           </div>
-
-          <div className="sidebar-section">
-            <h2 className="sidebar-section-title">OPERATIONS</h2>
-            <ul className="nav-list">
-              {operations.map(item => (
-                <li key={item.name}>
-                  <button 
-                    className={`sidebar-item ${activeTab === item.name ? 'active' : ''}`}
-                    onClick={() => setActiveTab(item.name)}
-                  >
-                    <item.icon size={18} className="nav-icon" />
-                    <span>{item.name}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <select 
+            className="role-select"
+            value={activeRole}
+            onChange={(e) => {
+              setActiveRole(e.target.value);
+              showToast(`Switched view to ${e.target.value}`);
+            }}
+          >
+            <option value="HR Executive">HR Executive / People Ops</option>
+            <option value="Team Lead">Team Lead / Engineering Mgr</option>
+            <option value="Data Analyst">Data Scientist / ML Ops</option>
+          </select>
         </div>
 
+        {/* Navigation Menu */}
+        <nav className="nav-section">
+          <div className="nav-section-title">Core Intelligence</div>
+          <button 
+            className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+            onClick={() => setActiveTab('dashboard')}
+          >
+            <BarChart3 size={18} />
+            <span>Executive Dashboard</span>
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'directory' ? 'active' : ''}`}
+            onClick={() => setActiveTab('directory')}
+          >
+            <Users size={18} />
+            <span>Flight Risk Explorer</span>
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'simulator' ? 'active' : ''}`}
+            onClick={() => setActiveTab('simulator')}
+          >
+            <Sliders size={18} />
+            <span>What-If Simulator</span>
+          </button>
+
+          <div className="nav-section-title" style={{ marginTop: 14 }}>Action & ML</div>
+          <button 
+            className={`nav-item ${activeTab === 'playbook' ? 'active' : ''}`}
+            onClick={() => setActiveTab('playbook')}
+          >
+            <Lightbulb size={18} />
+            <span>Retention Playbook</span>
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'models' ? 'active' : ''}`}
+            onClick={() => setActiveTab('models')}
+          >
+            <Cpu size={18} />
+            <span>ML Model & Data (Phase 2)</span>
+          </button>
+        </nav>
+
+        {/* Sidebar Footer Status */}
         <div className="sidebar-footer">
-          <div className="user-profile" title="Click icon to logout">
-            <div className="avatar">{user.username.substring(0,2).toUpperCase()}</div>
-            <div className="user-info">
-              <span className="user-name">{user.username}</span>
-              <span className="user-role">{user.role}</span>
-            </div>
-            <button className="icon-btn" onClick={handleLogout} style={{width: 32, height: 32, zIndex: 20}}>
-              <Settings size={16} className="settings-icon" />
-            </button>
+          <div className="model-status-indicator">
+            <span className="pulse-dot"></span>
+            <span>Model v2.4 Active (92.4% Acc)</span>
           </div>
         </div>
-      </nav>
+      </aside>
 
-      <main className="main-wrapper" id="main-content">
-        <header className="top-bar">
-          <div className="header-text">
-            <h1 className="main-title">{activeTab}</h1>
-            <p className="main-subtitle">Secure Access: {user.role} · {user.role === 'Team Lead' ? 'Engineering Dept' : (user.role === 'Data Analyst' ? 'Anonymized Dataset' : 'All Departments')}</p>
+      {/* Main Content Area */}
+      <main className="main-wrapper">
+        {/* Top Header */}
+        <header className="top-header">
+          <div className="header-left">
+            <h2 className="page-title">
+              {activeTab === 'dashboard' && 'Workforce Retention Overview'}
+              {activeTab === 'directory' && 'Employee Flight Risk Directory'}
+              {activeTab === 'simulator' && 'AI What-If Retention Simulator'}
+              {activeTab === 'playbook' && 'AI Retention Strategy Playbook'}
+              {activeTab === 'models' && 'Model Intelligence & Training Pipeline'}
+            </h2>
           </div>
-          <div className="top-actions">
-            <button className="btn-primary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 1rem', fontSize: '0.85rem', whiteSpace: 'nowrap'}} onClick={() => prompt('Enter external DB connection URI:')}>
-              <Upload size={16} /> Upload Data
+
+          <div className="search-box">
+            <Search size={16} />
+            <input 
+              type="text" 
+              placeholder="Search employee, ID, role or skill..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <div className="header-right">
+            <button className="icon-btn" onClick={toggleTheme} title="Toggle Dark/Light Mode">
+              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <div className="search-bar">
-              <Search size={18} />
-              <input type="text" placeholder="Search..." />
+            <button className="icon-btn" onClick={() => showToast('3 critical risk alerts pending review')}>
+              <Bell size={18} />
+            </button>
+            <div className="user-profile-badge">
+              <img 
+                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" 
+                alt="Profile" 
+                className="user-avatar"
+              />
+              <div style={{ lineHeight: 1.2 }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700 }}>Alex Morgan</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{activeRole}</div>
+              </div>
             </div>
-            <button className="icon-btn" onClick={() => setIsDark(!isDark)} aria-label="Toggle Theme">
-              {isDark ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-            <button className="icon-btn">
-              <Bell size={20} />
-              <span className="notification-dot"></span>
-            </button>
           </div>
         </header>
 
-        {activeTab === 'Dashboard' && (
-          <>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
-              <h2 style={{color: 'var(--text-primary)', margin: 0, fontSize: '1.2rem'}}>Dynamic Insight Engine</h2>
-              <select style={{background: 'var(--glass-bg)', color: 'var(--text-primary)', padding: '0.4rem 0.8rem', border: '1px solid var(--glass-border)', borderRadius: '6px', fontSize: '0.85rem', outline: 'none'}} value={insightTime} onChange={(e) => setInsightTime(e.target.value)}>
-                 <option>Last 30 Days</option>
-                 <option>Last 3 Months</option>
-                 <option>Last 6 Months</option>
-                 <option>1 Year Horizon</option>
-              </select>
-            </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-              {dashData?.data && (
-                <div className="glass-panel" style={{padding: '1.5rem', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.1)', cursor: 'pointer', transition: 'transform 0.2s'}} onClick={() => setActiveTab('Attrition Risk')} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
-                   <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem'}}>
-                     <AlertCircle size={20} color="var(--accent-red)"/> 
-                     <h3 style={{margin: 0, color: 'var(--text-primary)', fontSize: '1rem'}}>Surge in Flight Risks</h3>
-                   </div>
-                   <p style={{fontSize: '0.9rem', color: 'var(--text-secondary)'}}>Model detected {dashData.data.filter(e => e.predicted_risk > 50).length} high-risk personnel in {insightTime}.</p>
-                   <div style={{marginTop: '1.25rem'}}>
-                      <strong style={{fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Core Drivers:</strong>
-                      <ul style={{fontSize: '0.85rem', color: 'var(--text-primary)', paddingLeft: '1.2rem', marginTop: '0.5rem', marginBottom: 0}}>
-                        <li style={{marginBottom: '0.25rem'}}>Excess {insightTime === 'Last 30 Days' ? 'clinical' : 'operational'} overtime tracking flagged</li>
-                        <li>Below-average job satisfaction proxy matched</li>
-                      </ul>
-                   </div>
+        {/* Content Views */}
+        <div className="content-body">
+          
+          {/* TAB 1: EXECUTIVE DASHBOARD */}
+          {activeTab === 'dashboard' && (
+            <>
+              {/* KPI Cards Grid */}
+              <div className="kpi-grid">
+                <div className="kpi-card" style={{ '--card-accent': 'linear-gradient(90deg, #6366f1, #8b5cf6)' }}>
+                  <div className="kpi-header">
+                    <span>Workforce Attrition Risk</span>
+                    <div className="kpi-icon"><TrendingUp size={18} /></div>
+                  </div>
+                  <div className="kpi-value-row">
+                    <span className="kpi-value">13.8%</span>
+                    <span className="kpi-delta negative-good">
+                      <ArrowDownRight size={14} /> -2.4% MoM
+                    </span>
+                  </div>
+                  <span className="kpi-subtext">Calculated across 240 active team members</span>
                 </div>
-              )}
-              
-              <div className="glass-panel" style={{padding: '1.5rem', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.1)'}}>
-                   <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem'}}>
-                     <ActivitySquare size={20} color="var(--accent-emerald)"/> 
-                     <h3 style={{margin: 0, color: 'var(--text-primary)', fontSize: '1rem'}}>Retention Metric Stable</h3>
-                   </div>
-                   <p style={{fontSize: '0.9rem', color: 'var(--text-secondary)'}}>Surgical department attrition risk normalized over the {insightTime}.</p>
-                   <div style={{marginTop: '1.25rem'}}>
-                      <strong style={{fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Core Drivers:</strong>
-                      <ul style={{fontSize: '0.85rem', color: 'var(--text-primary)', paddingLeft: '1.2rem', marginTop: '0.5rem', marginBottom: 0}}>
-                        <li>Recent cross-department comp cycle adjustments</li>
-                      </ul>
-                   </div>
-              </div>
-            </div>
 
-
-
-        <section className="kpi-row">
-          <KpiCard 
-            title="TOTAL HEADCOUNT" 
-            value={dashData?.kpis ? dashData.kpis.total_headcount : "..."} 
-            trend="Active Profiles" 
-            isPositive={true} 
-            color="blue" 
-            onClick={() => setActiveTab('Directory')}
-          />
-          <KpiCard 
-            title="ATTRITION RATE" 
-            value={dashData?.kpis ? dashData.kpis.attrition_rate : "..."} 
-            suffix="%" 
-            trend="Model Output" 
-            isPositive={false} 
-            color="red" 
-            onClick={() => setActiveTab('Attrition Risk')}
-          />
-          <KpiCard 
-            title="AVG WEEKLY HOURS" 
-            value={dashData?.kpis ? dashData.kpis.avg_weekly_hours : "..."} 
-            suffix="h" 
-            trend="Capacity Proxy" 
-            isPositive={dashData?.kpis?.avg_weekly_hours <= 40} 
-            color={dashData?.kpis?.avg_weekly_hours > 45 ? 'orange' : 'emerald'} 
-          />
-          {user.role === 'Data Analyst' ? (
-            <KpiCard 
-              title="MODEL ACCURACY" 
-              value="89.4" 
-              suffix="%" 
-              trend="RandomForest" 
-              isPositive={true} 
-              color="purple" 
-            />
-          ) : (
-            <KpiCard 
-              title="BURNOUT INDEX (PROXY)" 
-              value={dashData?.kpis ? dashData.kpis.burnout_index : "..."} 
-              suffix="/100" 
-              trend={dashData?.kpis?.burnout_index > 60 ? "Critical Warning" : "Stable Baseline"} 
-              isPositive={dashData?.kpis?.burnout_index < 60} 
-              color={dashData?.kpis?.burnout_index > 60 ? "orange" : "emerald"} 
-            />
-          )}
-        </section>
-
-        <div className="dashboard-grid">
-          <section className="chart-card glass-panel" style={{display: 'flex', flexDirection: 'column'}}>
-            <header className="card-header" style={{flex: '0 0 auto', marginBottom: '1rem'}}>
-              <h3 className="card-title">
-                {user.role === 'Data Analyst' ? 'Feature Importance (Global)' : 'Disengagement Vectors'}
-              </h3>
-              <span className="badge-ai" style={{cursor: 'pointer'}} title="Powered by Recharts">Live Interactive Data</span>
-            </header>
-            <div style={{ flex: '1 1 auto', width: '100%', height: 260 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dashData?.data ? [
-                    { name: "Overtime Proxy", pct: Math.round(dashData.data.filter(e => e.working_hours > 40).length / dashData.data.length * 100), fill: "var(--accent-red)" },
-                    { name: "Perf Friction", pct: Math.round(dashData.data.filter(e => e.performance_rating < 3).length / dashData.data.length * 100), fill: "var(--accent-orange)" },
-                    { name: "WLB Deficit", pct: Math.round(dashData.data.filter(e => e.leave_count < 10).length / dashData.data.length * 100), fill: "var(--accent-purple)" },
-                    { name: "High Flight Risk", pct: Math.round(dashData.data.filter(e => e.predicted_risk > 50).length / dashData.data.length * 100), fill: "var(--accent-blue)" }
-                  ] : []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-                  <Tooltip 
-                    cursor={{fill: 'rgba(150,150,150,0.1)'}} 
-                    contentStyle={{background: 'var(--glass-bg)', borderColor: 'var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', boxShadow: '0 8px 32px rgba(0,0,0,0.12)'}} 
-                    formatter={(value) => [`${value}% of total personnel`, 'Prevalence']}
-                  />
-                  <Bar dataKey="pct" radius={[4, 4, 0, 0]} animationDuration={1500} barSize={45}>
-                    {dashData?.data && [
-                        { fill: "var(--accent-red)" },
-                        { fill: "var(--accent-orange)" },
-                        { fill: "var(--accent-purple)" },
-                        { fill: "var(--accent-blue)" }
-                    ].map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} style={{transition: 'fill 0.3s ease-out'}} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </section>
-
-          <section className="chart-card glass-panel">
-            <header className="card-header">
-              <h3 className="card-title">Event Stream</h3>
-              <button className="btn-text">Filter</button>
-            </header>
-            <div className="event-list">
-              {dashData?.data && dashData.data.filter(emp => emp.predicted_risk > 50).slice(0, 3).map((emp, i) => (
-                 <EventItem key={i} type="danger" title={`${emp.name} flagged for high attrition risk (${(emp.predicted_risk).toFixed(0)}%)`} meta={`Dept: ${emp.department} · Overtime: ${emp.working_hours > 40 ? 'Yes' : 'No'}`} onAction={() => { setActiveTab('Attrition Risk'); setTimeout(() => openReviewModal(emp), 100); }} />
-              ))}
-              {dashData?.data && dashData.data.filter(emp => emp.predicted_risk > 50).length === 0 && (
-                 <EventItem type="success" title="No high-risk profiles detected across organization." meta="Stable" />
-              )}
-              <EventItem type="info" title="System synchronised with Database backend" meta="Just now" />
-            </div>
-          </section>
-        </div>
-        </>
-        )}
-
-        {/* Directory Tab View */}
-        {activeTab === 'Directory' && (
-          <div className="directory-container glass-panel" style={{ padding: '2rem' }}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem'}}>
-              <h2 style={{color: 'var(--text-primary)', margin: 0}}>Personnel Directory</h2>
-              <div className="search-bar" style={{width: '300px'}}>
-                <Search size={16} />
-                <input 
-                  type="text" 
-                  placeholder="Search by name, ID, or department..." 
-                  value={dirSearch}
-                  onChange={(e) => setDirSearch(e.target.value)}
-                  style={{width: '100%'}}
-                />
-              </div>
-            </div>
-            
-            {!dashData?.data ? (
-              <p className="text-muted">Loading personnel records...</p>
-            ) : (
-              <div style={{ overflowX: 'auto', maxHeight: '65vh', overflowY: 'auto', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
-              <table style={{width: '100%', textAlign: 'left', borderCollapse: 'separate', borderSpacing: 0}}>
-                <thead style={{position: 'sticky', top: 0, zIndex: 10}}>
-                  <tr style={{background: 'var(--bg-card, #f8fafc)', color: 'var(--text-muted)', fontSize: '0.85rem'}}>
-                    <th style={{padding: '1rem', whiteSpace: 'nowrap', borderBottom: '1px solid var(--glass-border)'}}>ID / NAME</th>
-                    <th style={{padding: '1rem', whiteSpace: 'nowrap', borderBottom: '1px solid var(--glass-border)'}}>DEPARTMENT</th>
-                    <th style={{padding: '1rem', whiteSpace: 'nowrap', borderBottom: '1px solid var(--glass-border)'}}>ROLE</th>
-                    <th style={{padding: '1rem', whiteSpace: 'nowrap', borderBottom: '1px solid var(--glass-border)'}}>MONTHLY INCOME</th>
-                    <th style={{padding: '1rem', whiteSpace: 'nowrap', borderBottom: '1px solid var(--glass-border)'}}>EXCESS OT?</th>
-                    <th style={{padding: '1rem', whiteSpace: 'nowrap', borderBottom: '1px solid var(--glass-border)'}}>ATTRITION RISK</th>
-                    <th style={{padding: '1rem', whiteSpace: 'nowrap', borderBottom: '1px solid var(--glass-border)'}}>STATUS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dashData.data
-                    .filter(emp => 
-                      emp.name.toLowerCase().includes(dirSearch.toLowerCase()) || 
-                      emp.department.toLowerCase().includes(dirSearch.toLowerCase()) ||
-                      emp.emp_id.toLowerCase().includes(dirSearch.toLowerCase())
-                    )
-                    .map(emp => (
-                    <tr key={emp.emp_id} style={{borderBottom: '1px solid rgba(0,0,0,0.02)', color: 'var(--text-primary)'}}>
-                      <td style={{padding: '1rem', whiteSpace: 'nowrap'}}><strong>{emp.emp_id}</strong><br/><span style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}>{emp.name}</span></td>
-                      <td style={{padding: '1rem', whiteSpace: 'nowrap'}}>{emp.department}</td>
-                      <td style={{padding: '1rem', whiteSpace: 'nowrap'}}>{emp.role}</td>
-                      <td style={{padding: '1rem', whiteSpace: 'nowrap'}}>${emp.salary.toLocaleString()}</td>
-                      <td style={{padding: '1rem', whiteSpace: 'nowrap'}}>{emp.working_hours > 40 ? <span style={{color: 'var(--accent-red)'}}>Yes</span> : 'No'}</td>
-                      <td style={{padding: '1rem', whiteSpace: 'nowrap'}}><strong>{(emp.predicted_risk).toFixed(1)}%</strong></td>
-                      <td style={{padding: '1rem', whiteSpace: 'nowrap'}}>
-                        <span className={`badge`} style={{background: emp.predicted_risk > 50 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', color: emp.predicted_risk > 50 ? 'var(--accent-red)' : 'var(--accent-emerald)', padding: '0.25rem 0.75rem', borderRadius: '100px', fontSize: '0.8rem'}}>
-                          {emp.predicted_risk > 50 ? 'At Risk' : 'Retained'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {dashData.data.filter(emp => emp.name.toLowerCase().includes(dirSearch.toLowerCase()) || emp.department.toLowerCase().includes(dirSearch.toLowerCase()) || emp.emp_id.toLowerCase().includes(dirSearch.toLowerCase())).length === 0 && (
-                    <tr>
-                      <td colSpan="7" style={{textAlign: 'center', padding: '2rem', color: 'var(--text-muted)'}}>No employees found matching "{dirSearch}"</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Attrition Risk Detail View */}
-        {/* Attrition Risk Detail View */}
-        {activeTab === 'Attrition Risk' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'minMax(300px, 1fr) 2fr', gap: '1.5rem' }}>
-               {/* Left Column: Chart & Stats */}
-               <div className="glass-panel" style={{ padding: '2rem', display: 'flex', flexDirection: 'column' }}>
-                 <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem', fontSize: '1.1rem' }}>Risk by Department</h3>
-                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Distribution of high-risk profiles</p>
-                 <div style={{ height: '250px', width: '100%', marginBottom: '1rem' }}>
-                    <ResponsiveContainer>
-                       <BarChart data={(() => {
-                           const highRiskEmps = dashData?.data ? dashData.data.filter(emp => emp.predicted_risk > 50) : [];
-                           const deptCounts = highRiskEmps.reduce((acc, emp) => {
-                             acc[emp.department] = (acc[emp.department] || 0) + 1;
-                             return acc;
-                           }, {});
-                           return Object.keys(deptCounts).map(dept => ({ name: dept, count: deptCounts[dept] })).sort((a,b) => b.count - a.count);
-                       })()} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
-                         <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-                         <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-                         <Tooltip cursor={{fill: 'rgba(150,150,150,0.1)'}} contentStyle={{background: 'var(--glass-bg)', borderColor: 'var(--glass-border)', color: 'var(--text-primary)', borderRadius: '8px'}} />
-                         <Bar dataKey="count" fill="var(--accent-red)" radius={[4, 4, 0, 0]} barSize={25} />
-                       </BarChart>
-                    </ResponsiveContainer>
-                 </div>
-                 
-                 <div style={{ marginTop: 'auto', padding: '1.25rem', background: 'rgba(239, 68, 68, 0.05)', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
-                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-red)', marginBottom: '0.5rem' }}>
-                      <AlertCircle size={18} />
-                      <strong style={{ fontSize: '0.9rem' }}>Critical Threshold (&gt;50%)</strong>
-                   </div>
-                   <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>These employees require immediate 1-on-1 retention reviews. The algorithm confidently identifies correlated historical turnover attributes.</p>
-                 </div>
-               </div>
-
-               {/* Right Column: Interactive List */}
-               <div className="glass-panel" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', height: '100%', maxHeight: '72vh' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                    <h3 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.1rem' }}>High Flight-Risk Profiles</h3>
-                    <div className="search-bar" style={{ width: '220px' }}>
-                      <Search size={14} />
-                      <input type="text" placeholder="Search profiles..." id="risk-search" style={{ fontSize: '0.85rem' }} onChange={(e) => {
-                         const term = e.target.value.toLowerCase();
-                         document.querySelectorAll('.risk-card-item').forEach(el => {
-                            el.style.display = el.innerText.toLowerCase().includes(term) ? 'flex' : 'none';
-                         });
-                      }}/>
+                <div className="kpi-card" style={{ '--card-accent': 'linear-gradient(90deg, #f43f5e, #fb7185)' }}>
+                  <div className="kpi-header">
+                    <span>Critical / High Flight Risk</span>
+                    <div className="kpi-icon" style={{ background: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e' }}>
+                      <AlertTriangle size={18} />
                     </div>
                   </div>
-                  
-                  <div style={{ overflowY: 'auto', paddingRight: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1 }}>
-                    {dashData?.data && dashData.data.filter(emp => emp.predicted_risk > 50).map((emp, i) => (
-                      <div key={i} className="risk-card-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', border: '1px solid var(--glass-border)', borderRadius: '12px', background: 'var(--glass-bg)', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.06)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.boxShadow = 'none'; }}>
-                         
-                         <div style={{ flex: 1 }}>
-                           <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem'}}>
-                             <h4 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1rem' }}>{emp.name}</h4>
-                             <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '100px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-muted)' }}>{emp.emp_id}</span>
-                           </div>
-                           <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.85rem' }}>{emp.role} · {emp.department} | ${emp.salary.toLocaleString()}/mo</p>
-                           <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.75rem' }}>
-                              <span style={{ fontSize: '0.8rem', color: emp.working_hours > 40 ? 'var(--accent-red)' : 'var(--text-secondary)' }}>
-                                 <strong>Hrs/Wk:</strong> {emp.working_hours > 40 ? 'Overtime Flag' : 'Standard'}
-                              </span>
-                              <span style={{ fontSize: '0.8rem', color: emp.performance_rating < 3 ? 'var(--accent-orange)' : 'var(--text-secondary)' }}>
-                                 <strong>Perf Proxy:</strong> {(emp.performance_rating).toFixed(1)} / 4.0
-                              </span>
-                           </div>
-                         </div>
-                         
-                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: '1rem' }}>
-                           <div style={{display: 'flex', alignItems: 'baseline', gap: '2px'}}>
-                             <span style={{ fontSize: '1.5rem', fontWeight: '600', color: 'var(--accent-red)', lineHeight: 1 }}>{emp.predicted_risk.toFixed(1)}</span>
-                             <span style={{ fontSize: '0.85rem', color: 'var(--accent-red)', fontWeight: 500 }}>%</span>
-                           </div>
-                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Attr. Prob</span>
-                           <button className="btn-alert" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', whiteSpace: 'nowrap' }} onClick={(e) => { e.stopPropagation(); openReviewModal(emp); }}>
-                             Simulate Case
-                           </button>
-                         </div>
+                  <div className="kpi-value-row">
+                    <span className="kpi-value">38</span>
+                    <span className="kpi-delta positive-bad">
+                      <ArrowUpRight size={14} /> 4 New High-Risk
+                    </span>
+                  </div>
+                  <span className="kpi-subtext">Immediate intervention recommended</span>
+                </div>
+
+                <div className="kpi-card" style={{ '--card-accent': 'linear-gradient(90deg, #06b6d4, #3b82f6)' }}>
+                  <div className="kpi-header">
+                    <span>Estimated Cost at Risk</span>
+                    <div className="kpi-icon" style={{ background: 'rgba(6, 182, 212, 0.1)', color: '#06b6d4' }}>
+                      <DollarSign size={18} />
+                    </div>
+                  </div>
+                  <div className="kpi-value-row">
+                    <span className="kpi-value">$1.42M</span>
+                    <span className="kpi-delta negative-good">
+                      <ArrowDownRight size={14} /> $180k saved
+                    </span>
+                  </div>
+                  <span className="kpi-subtext">Replacement & retraining turnover cost</span>
+                </div>
+
+                <div className="kpi-card" style={{ '--card-accent': 'linear-gradient(90deg, #10b981, #34d399)' }}>
+                  <div className="kpi-header">
+                    <span>Retention ROI Multiplier</span>
+                    <div className="kpi-icon" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+                      <ShieldCheck size={18} />
+                    </div>
+                  </div>
+                  <div className="kpi-value-row">
+                    <span className="kpi-value">4.8x</span>
+                    <span className="kpi-delta negative-good">
+                      <ArrowUpRight size={14} /> Top Quartile
+                    </span>
+                  </div>
+                  <span className="kpi-subtext">Intervention savings vs compensation bump</span>
+                </div>
+              </div>
+
+              {/* Main Charts Row */}
+              <div className="grid-2-col">
+                {/* Department Risk Distribution Chart */}
+                <div className="chart-card">
+                  <div className="card-title-row">
+                    <h3 className="card-title">
+                      <BarChart3 size={18} color="#6366f1" />
+                      Departmental Flight Risk & High-Risk Headcount
+                    </h3>
+                    <span className="card-badge">Live ML Prediction</span>
+                  </div>
+                  <div style={{ height: 300, width: '100%' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={DEPARTMENT_METRICS} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                        <XAxis dataKey="department" stroke="#64748b" fontSize={12} tickLine={false} />
+                        <YAxis stroke="#64748b" fontSize={12} tickLine={false} unit="%" />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#0d1322', borderColor: 'rgba(255,255,255,0.1)', borderRadius: 10 }}
+                          formatter={(val) => [`${val}%`, 'Avg Risk']}
+                        />
+                        <Bar dataKey="avgRisk" radius={[6, 6, 0, 0]}>
+                          {DEPARTMENT_METRICS.map((entry, index) => (
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={entry.avgRisk > 45 ? '#f43f5e' : entry.avgRisk > 35 ? '#f59e0b' : '#10b981'} 
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Real-time High Risk Feed */}
+                <div className="chart-card">
+                  <div className="card-title-row">
+                    <h3 className="card-title">
+                      <AlertTriangle size={18} color="#fb7185" />
+                      Critical Attention Queue
+                    </h3>
+                    <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: '0.75rem' }} onClick={() => setActiveTab('directory')}>
+                      View All
+                    </button>
+                  </div>
+
+                  <div className="risk-feed-list">
+                    {employees.filter(e => e.riskTier === 'Critical' || e.riskTier === 'High').map(emp => (
+                      <div 
+                        key={emp.id} 
+                        className="risk-feed-item"
+                        onClick={() => {
+                          setSelectedEmployee(emp);
+                          setIsModalOpen(true);
+                        }}
+                      >
+                        <div className="feed-emp-info">
+                          <img src={emp.avatar} alt={emp.name} className="feed-emp-avatar" />
+                          <div className="feed-emp-details">
+                            <h4>{emp.name}</h4>
+                            <p>{emp.role} • {emp.department}</p>
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          {renderRiskBadge(emp.riskTier, emp.riskScore)}
+                          <div style={{ fontSize: '0.72rem', color: '#818cf8', marginTop: 4 }}>
+                            Inspect Profile &rarr;
+                          </div>
+                        </div>
                       </div>
                     ))}
-                    {dashData?.data && dashData.data.filter(emp => emp.predicted_risk > 50).length === 0 && <p className="text-muted" style={{textAlign: 'center', marginTop: '2rem'}}>No high risk personnel matched.</p>}
                   </div>
-               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Disengagement Vectors Deep Dive */}
-        {activeTab === 'Disengagement' && (
-          <div className="glass-panel" style={{padding: '2rem'}}>
-             <h2 style={{color: 'var(--text-primary)', marginBottom: '1.5rem'}}>Proxy Metric Distributions</h2>
-             <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem'}}>
-                <div style={{background: 'var(--glass-bg)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                  <h3 style={{color: 'var(--text-primary)', marginBottom: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem'}}>Work-Life Balance Deficits (Proxy)</h3>
-                  <p style={{color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem'}}>Employees logging under 10 leave intervals indicate severely disrupted work expectations or resourcing.</p>
-                  {dashData?.data && dashData.data.filter(emp => emp.leave_count < 10).slice(0,5).map((emp, i) => (
-                    <div key={i} style={{display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', color: 'var(--text-primary)'}}>
-                      <span>{emp.name} ({emp.department})</span>
-                      <strong style={{color: 'var(--accent-orange)'}}>{emp.leave_count} leaves logged</strong>
-                    </div>
-                  ))}
                 </div>
-                
-                <div style={{background: 'var(--glass-bg)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                  <h3 style={{color: 'var(--text-primary)', marginBottom: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem'}}>Performance Friction (Proxy)</h3>
-                  <p style={{color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem'}}>Associates indexing below 3.0 on standard operational checks, suggesting potential disengagement.</p>
-                  {dashData?.data && dashData.data.filter(emp => emp.performance_rating < 3).slice(0,5).map((emp, i) => (
-                    <div key={i} style={{display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', color: 'var(--text-primary)'}}>
-                      <span>{emp.name} ({emp.role})</span>
-                      <strong style={{color: 'var(--accent-red)'}}>{emp.performance_rating.toFixed(1)} / 4.0</strong>
-                    </div>
-                  ))}
-                </div>
-             </div>
-          </div>
-        )}
-
-        {/* Recommendations Panel */}
-        {activeTab === 'Recommendations' && (
-          <div className="glass-panel" style={{padding: '2rem'}}>
-             <h2 style={{color: 'var(--text-primary)', marginBottom: '1.5rem'}}>Automated Analytical Actions</h2>
-             {!dashData?.recommendations ? (
-                 <p className="text-muted">Generating...</p>
-             ) : (
-                <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
-                  {dashData.recommendations.map((rec, i) => (
-                    <div key={i} style={{background: 'var(--glass-bg)', border: `1px solid ${rec.color || 'var(--glass-border)'}`, padding: '1.5rem', borderRadius: '8px', borderLeft: `8px solid ${rec.color || '#fff'}`}}>
-                       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                          <h3 style={{color: 'var(--text-primary)', margin: 0}}>{rec.issue}</h3>
-                          <span style={{padding: '0.2rem 0.8rem', borderRadius: '100px', fontSize: '0.8rem', background: rec.urgency === 'High' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255, 255, 255, 0.1)', color: rec.color}}>
-                            {rec.urgency} Priority
-                          </span>
-                       </div>
-                       <p style={{color: 'var(--text-secondary)', marginTop: '0.75rem'}}>{rec.action}</p>
-                       {rec.urgency === 'High' && <button className="btn-primary" style={{marginTop: '1rem', padding: '0.5rem 1rem'}}>Execute System Policy</button>}
-                    </div>
-                  ))}
-                </div>
-             )}
-          </div>
-        )}
-
-        {/* Access Control Profile */}
-        {activeTab === 'Access Control' && (
-          <div className="glass-panel" style={{padding: '2rem'}}>
-             <h2 style={{color: 'var(--text-primary)', marginBottom: '1.5rem'}}>RBAC Policies & Audit Logs</h2>
-             <table style={{width: '100%', textAlign: 'left', borderCollapse: 'collapse', marginTop: '1rem', background: 'var(--glass-bg)', borderRadius: '12px'}}>
-                <thead>
-                  <tr style={{borderBottom: '1px solid var(--glass-border)', color: 'var(--text-muted)'}}>
-                    <th style={{padding: '1rem'}}>User Handle</th>
-                    <th>RBAC Clearances</th>
-                    <th>Last Authenticated</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {['admin - HR Manager', 'lead - Team Lead', 'analyst - Data Analyst'].map((userProfile, i) => {
-                     const [id, role] = userProfile.split(' - ');
-                     return (
-                        <tr key={i} style={{borderBottom: '1px solid rgba(0,0,0,0.02)', color: 'var(--text-primary)'}}>
-                          <td style={{padding: '1rem'}}><strong>{id}</strong></td>
-                          <td>
-                            <span style={{background: 'rgba(168, 85, 247, 0.1)', color: 'var(--accent-purple)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.8rem'}}>{role}</span>
-                            {role === 'HR Manager' && <span style={{background: 'rgba(16, 185, 129, 0.1)', color: 'var(--accent-emerald)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.8rem', marginLeft: '0.5rem'}}>Superuser</span>}
-                          </td>
-                          <td style={{color: 'var(--text-secondary)'}}>Today, {new Date().toLocaleTimeString()}</td>
-                          <td><button className="btn-text" style={{textDecoration: 'underline'}}>Revoke Tokens</button></td>
-                        </tr>
-                     );
-                  })}
-                </tbody>
-             </table>
-             <div style={{marginTop: '3rem'}}>
-               <h3 style={{color: 'var(--text-primary)', fontSize: '1rem'}}>System Information</h3>
-                        <p style={{color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.5rem'}}>Dataset Binding: employee_data.db (IBM Watson Healthcare Mapped Strategy)<br/>Security Wrapper: bcrypt + cryptography.fernet<br/>Authentication State: Stateless Front-channel</p>
-             </div>
-          </div>
-        )}
-      </main>
-
-      {reviewModalOpen && selectedEmp && (
-        <div className="modal-backdrop" onClick={() => setReviewModalOpen(false)}>
-          <div className="modal-container glass-panel" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title-group">
-                <h3>Retention Modeler: {selectedEmp.name}</h3>
-                <p>Employee ID: {selectedEmp.emp_id} · Department: {selectedEmp.department} · Current Role: {selectedEmp.role}</p>
               </div>
-              <button className="modal-close-btn" onClick={() => setReviewModalOpen(false)} aria-label="Close modal">
-                <X size={20} />
-              </button>
+            </>
+          )}
+
+          {/* TAB 2: EMPLOYEE DIRECTORY & RISK EXPLORER */}
+          {activeTab === 'directory' && (
+            <div className="chart-card">
+              <div className="toolbar-row">
+                <div className="filter-group">
+                  <select 
+                    className="filter-select"
+                    value={deptFilter}
+                    onChange={(e) => setDeptFilter(e.target.value)}
+                  >
+                    <option value="All">All Departments</option>
+                    <option value="Engineering">Engineering</option>
+                    <option value="Product">Product</option>
+                    <option value="Sales">Sales</option>
+                    <option value="Customer Success">Customer Success</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Finance">Finance</option>
+                  </select>
+
+                  <select 
+                    className="filter-select"
+                    value={riskFilter}
+                    onChange={(e) => setRiskFilter(e.target.value)}
+                  >
+                    <option value="All">All Risk Tiers</option>
+                    <option value="Critical">Critical Risk (&gt;75%)</option>
+                    <option value="High">High Risk (60-75%)</option>
+                    <option value="Medium">Medium Risk (35-60%)</option>
+                    <option value="Low">Low Risk (&lt;35%)</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button 
+                    className="btn-primary"
+                    onClick={() => {
+                      showToast('Simulating batch retention export report...');
+                    }}
+                  >
+                    <FileText size={16} />
+                    Export Risk Dossier
+                  </button>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="table-container" style={{ marginTop: 16 }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Employee</th>
+                      <th>Department & Role</th>
+                      <th>Tenure / Comp Ratio</th>
+                      <th>Overtime (Mo)</th>
+                      <th>Primary Flight Drivers</th>
+                      <th>Risk Probability</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredEmployees.map(emp => (
+                      <tr key={emp.id}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <img src={emp.avatar} alt={emp.name} style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }} />
+                            <div>
+                              <div style={{ fontWeight: 700 }}>{emp.name}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{emp.id}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{emp.role}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{emp.department}</div>
+                        </td>
+                        <td>
+                          <div>{emp.tenureYears} Years</div>
+                          <div style={{ fontSize: '0.75rem', color: emp.salaryMarketRatio < 0.9 ? '#fb7185' : '#34d399' }}>
+                            ${(emp.salary / 1000).toFixed(0)}k ({Math.round(emp.salaryMarketRatio * 100)}% market)
+                          </div>
+                        </td>
+                        <td>
+                          <span style={{ fontWeight: 600, color: emp.overtimeHoursMonth > 25 ? '#fb923c' : 'inherit' }}>
+                            {emp.overtimeHoursMonth}h / mo
+                          </span>
+                        </td>
+                        <td>
+                          <div className="driver-tags">
+                            {emp.primaryDrivers.map((driver, i) => (
+                              <span key={i} className="driver-tag">{driver}</span>
+                            ))}
+                          </div>
+                        </td>
+                        <td>
+                          {renderRiskBadge(emp.riskTier, emp.riskScore)}
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button 
+                              className="btn-secondary" 
+                              style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+                              onClick={() => {
+                                setSimTargetEmp(emp);
+                                setActiveTab('simulator');
+                              }}
+                            >
+                              <Sliders size={14} /> Simulate
+                            </button>
+                            <button 
+                              className="btn-primary" 
+                              style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+                              onClick={() => {
+                                setSelectedEmployee(emp);
+                                setIsModalOpen(true);
+                              }}
+                            >
+                              Details
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            
-            <div className="modal-body">
-              {/* Left Column: Interactive Parameters */}
-              <div>
-                <h4 className="modal-section-title">What-If Parameter Adjustments</h4>
-                
-                <div className="slider-group">
-                  <div className="slider-header">
-                    <span>Weekly Working Hours</span>
-                    <span><strong>{simValues.working_hours} hrs</strong> (Current: {selectedEmp.working_hours} hrs)</span>
+          )}
+
+          {/* TAB 3: WHAT-IF RETENTION SIMULATOR */}
+          {activeTab === 'simulator' && (
+            <div className="simulator-layout">
+              {/* Controls Column */}
+              <div className="chart-card">
+                <div className="card-title-row">
+                  <h3 className="card-title">
+                    <Sliders size={18} color="#6366f1" />
+                    Target Profile & Retention Levers
+                  </h3>
+                  {/* Select Employee to simulate */}
+                  <select 
+                    className="filter-select"
+                    value={simTargetEmp ? simTargetEmp.id : ''}
+                    onChange={(e) => {
+                      const found = employees.find(emp => emp.id === e.target.value);
+                      if (found) setSimTargetEmp(found);
+                    }}
+                  >
+                    {employees.map(e => (
+                      <option key={e.id} value={e.id}>
+                        {e.name} ({e.role} - Current Risk: {e.riskScore}%)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {simTargetEmp && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--bg-input)', padding: 14, borderRadius: 12, border: '1px solid var(--border-subtle)' }}>
+                    <img src={simTargetEmp.avatar} alt={simTargetEmp.name} style={{ width: 48, height: 48, borderRadius: 10, objectFit: 'cover' }} />
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ fontWeight: 700 }}>{simTargetEmp.name}</h4>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {simTargetEmp.department} • Current Base: ${(simTargetEmp.salary).toLocaleString()} • Market Ratio: {Math.round(simTargetEmp.salaryMarketRatio * 100)}%
+                      </p>
+                    </div>
+                    <div>
+                      {renderRiskBadge(simTargetEmp.riskTier, simTargetEmp.riskScore)}
+                    </div>
                   </div>
-                  <div className="slider-input-container">
+                )}
+
+                <div className="simulator-controls">
+                  {/* Slider 1: Base Compensation Adjustment */}
+                  <div className="slider-group">
+                    <div className="slider-header">
+                      <span>Base Salary Calibration (%)</span>
+                      <span className="slider-value">+{simSalaryDelta}% (${simTargetEmp ? Math.round(simTargetEmp.salary * (1 + simSalaryDelta / 100)).toLocaleString() : ''})</span>
+                    </div>
                     <input 
                       type="range" 
-                      min="20" 
-                      max="80" 
-                      step="0.5"
-                      value={simValues.working_hours} 
-                      onChange={e => setSimValues({...simValues, working_hours: parseFloat(e.target.value)})}
+                      min="0" 
+                      max="30" 
+                      step="1" 
+                      value={simSalaryDelta}
+                      onChange={(e) => setSimSalaryDelta(Number(e.target.value))}
+                      className="custom-range"
                     />
-                    <span className="slider-value-badge">{simValues.working_hours}</span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Brings salary closer to 100%+ of peer benchmark</span>
                   </div>
-                </div>
 
-                <div className="slider-group">
-                  <div className="slider-header">
-                    <span>Performance Rating Review</span>
-                    <span><strong>{simValues.performance_rating} / 4.0</strong> (Current: {selectedEmp.performance_rating})</span>
+                  {/* Slider 2: Monthly Overtime Hours */}
+                  <div className="slider-group">
+                    <div className="slider-header">
+                      <span>Monthly Overtime Cap</span>
+                      <span className="slider-value">{simOvertimeHours} hrs / month</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="45" 
+                      step="1" 
+                      value={simOvertimeHours}
+                      onChange={(e) => setSimOvertimeHours(Number(e.target.value))}
+                      className="custom-range"
+                    />
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Current workload: {simTargetEmp?.overtimeHoursMonth}h (Reduction lowers burnout coefficient)</span>
                   </div>
-                  <div className="slider-input-container">
+
+                  {/* Slider 3: Remote / WFH Days */}
+                  <div className="slider-group">
+                    <div className="slider-header">
+                      <span>Remote Days / Week</span>
+                      <span className="slider-value">{simRemoteDays} Days WFH</span>
+                    </div>
                     <input 
                       type="range" 
                       min="1" 
-                      max="4" 
-                      step="0.1"
-                      value={simValues.performance_rating} 
-                      onChange={e => setSimValues({...simValues, performance_rating: parseFloat(e.target.value)})}
-                    />
-                    <span className="slider-value-badge">{(simValues.performance_rating).toFixed(1)}</span>
-                  </div>
-                </div>
-
-                <div className="slider-group">
-                  <div className="slider-header">
-                    <span>Leave Count (Annual)</span>
-                    <span><strong>{simValues.leave_count} leaves</strong> (Current: {selectedEmp.leave_count})</span>
-                  </div>
-                  <div className="slider-input-container">
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="50" 
-                      step="1"
-                      value={simValues.leave_count} 
-                      onChange={e => setSimValues({...simValues, leave_count: parseInt(e.target.value)})}
-                    />
-                    <span className="slider-value-badge">{simValues.leave_count}</span>
-                  </div>
-                </div>
-
-                <div className="slider-group">
-                  <div className="slider-header">
-                    <span>Task Completion Efficiency</span>
-                    <span><strong>{simValues.task_completion}%</strong> (Current: {selectedEmp.task_completion}%)</span>
-                  </div>
-                  <div className="slider-input-container">
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="100" 
-                      step="5"
-                      value={simValues.task_completion} 
-                      onChange={e => setSimValues({...simValues, task_completion: parseFloat(e.target.value)})}
-                    />
-                    <span className="slider-value-badge">{simValues.task_completion}%</span>
-                  </div>
-                </div>
-
-                <div className="slider-group">
-                  <div className="slider-header">
-                    <span>Team Transfers</span>
-                    <span><strong>{simValues.transfers} transfers</strong> (Current: {selectedEmp.transfers})</span>
-                  </div>
-                  <div className="slider-input-container">
-                    <input 
-                      type="range" 
-                      min="0" 
                       max="5" 
-                      step="1"
-                      value={simValues.transfers} 
-                      onChange={e => setSimValues({...simValues, transfers: parseInt(e.target.value)})}
+                      step="1" 
+                      value={simRemoteDays}
+                      onChange={(e) => setSimRemoteDays(Number(e.target.value))}
+                      className="custom-range"
                     />
-                    <span className="slider-value-badge">{simValues.transfers}</span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Work-life autonomy flexibility factor</span>
+                  </div>
+
+                  {/* Slider 4: One-time Retention Milestone Bonus */}
+                  <div className="slider-group">
+                    <div className="slider-header">
+                      <span>Retention Milestone Bonus</span>
+                      <span className="slider-value">${simBonusAmount.toLocaleString()}</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="25000" 
+                      step="1000" 
+                      value={simBonusAmount}
+                      onChange={(e) => setSimBonusAmount(Number(e.target.value))}
+                      className="custom-range"
+                    />
+                  </div>
+
+                  {/* Checkbox: Fast track promotion */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-input)', padding: '14px 18px', borderRadius: 12, border: '1px solid var(--border-subtle)' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>Fast-Track Promotion & Title Review</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Sets upcoming promotion milestone in next quarterly cycle</div>
+                    </div>
+                    <input 
+                      type="checkbox" 
+                      checked={simPromotionStatus}
+                      onChange={(e) => setSimPromotionStatus(e.target.checked)}
+                      style={{ width: 18, height: 18, accentColor: '#6366f1', cursor: 'pointer' }}
+                    />
                   </div>
                 </div>
               </div>
-              
-              {/* Right Column: Live Prediction & Decision Support */}
-              <div>
-                <h4 className="modal-section-title">AI Prognosis & Decision Support</h4>
-                
-                {/* Attrition Risk Percentage Indicator */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1.5rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline' }}>
-                    <span style={{ 
-                      fontSize: '3.5rem', 
-                      fontWeight: '700', 
-                      color: simRisk > 60 ? 'var(--accent-red)' : (simRisk > 35 ? 'var(--accent-orange)' : 'var(--accent-emerald)'),
-                      lineHeight: 1 
-                    }}>
-                      {simRisk.toFixed(0)}
-                    </span>
-                    <span style={{ 
-                      fontSize: '1.5rem', 
-                      fontWeight: '600',
-                      color: simRisk > 60 ? 'var(--accent-red)' : (simRisk > 35 ? 'var(--accent-orange)' : 'var(--accent-emerald)')
-                    }}>%</span>
+
+              {/* Real-time AI Simulation Outcome Card */}
+              <div className="chart-card" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div className="card-title-row">
+                  <h3 className="card-title">
+                    <Sparkles size={18} color="#38bdf8" />
+                    Simulated AI Outcome
+                  </h3>
+                  <span className="card-badge">Live SHAP Prediction</span>
+                </div>
+
+                <div className="gauge-result-card" style={{
+                  '--gauge-color': simulatedRisk.tier === 'Critical' ? '#f43f5e' : simulatedRisk.tier === 'High' ? '#f97316' : simulatedRisk.tier === 'Medium' ? '#eab308' : '#10b981',
+                  '--gauge-glow': simulatedRisk.tier === 'Critical' ? 'rgba(244, 63, 94, 0.3)' : 'rgba(16, 185, 129, 0.3)'
+                }}>
+                  <div className="gauge-circle">
+                    <span className="gauge-number">{simulatedRisk.score}%</span>
+                    <span className="gauge-label">Attrition Risk</span>
                   </div>
+
                   <div>
-                    <div style={{ fontWeight: '600', fontSize: '1rem', color: 'var(--text-primary)' }}>Attrition Probability</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Updated dynamically via ML Engine</div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>
+                      {simulatedRisk.tier} Flight Risk
+                    </h3>
+                    <p style={{ fontSize: '0.85rem', color: '#34d399', fontWeight: 600, marginTop: 4 }}>
+                      ↓ {simRiskDelta > 0 ? `Reduced by ${simRiskDelta} risk points` : 'No reduction'}
+                    </p>
                   </div>
                 </div>
-                
-                {/* Decision Support Card */}
-                <div className={`decision-support-card status-${simRisk > 60 ? 'high' : (simRisk > 35 ? 'medium' : 'low')}`}>
-                  {simRisk > 60 ? (
-                    <>
-                      <span className="decision-badge high">Immediate Action Required</span>
-                      <p className="decision-text">
-                        <strong>Critical Burnout Profile:</strong> The simulated parameters indicate extreme flight risk. 
-                        We recommend capping weekly hours, assigning a senior mentor, and initiating an urgent check-in.
-                      </p>
-                    </>
-                  ) : simRisk > 35 ? (
-                    <>
-                      <span className="decision-badge medium">Retention Nudge Advisable</span>
-                      <p className="decision-text">
-                        <strong>Rising Fatigue Signals:</strong> Moderate attrition risk detected. We recommend checking in on 
-                        workplace satisfaction and ensuring they are taking appropriate leave intervals.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <span className="decision-badge low">Stable Alignment</span>
-                      <p className="decision-text">
-                        <strong>Healthy Engagement:</strong> Low flight risk profile. Maintain current working arrangements, 
-                        promote recognition of their output, and schedule standard reviews.
-                      </p>
-                    </>
-                  )}
-                </div>
-                
-                {/* Personalized AI Suggestion Bubble */}
-                <div className="suggestion-bubble">
-                  <div className="suggestion-bubble-title">
-                    <Lightbulb size={16} />
-                    <span>Personalized AI Guidance</span>
+
+                {/* Economic ROI Impact */}
+                <div style={{ background: 'var(--bg-input)', padding: 18, borderRadius: 14, border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Estimated Replacement Cost Avoided:</span>
+                    <span style={{ fontWeight: 800, color: '#34d399' }}>+${simulatedRisk.costSavings.toLocaleString()}</span>
                   </div>
-                  <p className="suggestion-bubble-text">
-                    {simValues.working_hours > 45 ? (
-                      "Target: Reduce working hours. Capping hours to 40 per week reduces predicted attrition risk."
-                    ) : simValues.performance_rating < 3.0 ? (
-                      "Target: Engagement booster. Schedule a skill mentoring session to address task performance barriers."
-                    ) : simValues.leave_count < 10 ? (
-                      "Target: Work-life balance. Encourage the associate to utilize remaining paid leaves to reset."
-                    ) : (
-                      "All metrics look stable. No major friction factors identified for this profile."
-                    )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Calculated Package Cost:</span>
+                    <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
+                      ${(Math.round((simTargetEmp?.salary || 0) * (simSalaryDelta / 100)) + simBonusAmount).toLocaleString()}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', borderTop: '1px solid var(--border-subtle)', paddingTop: 8 }}>
+                    <span style={{ fontWeight: 700 }}>Net Estimated Retention ROI:</span>
+                    <span style={{ fontWeight: 800, color: '#6366f1' }}>
+                      {simRiskDelta > 15 ? '3.4x Payoff' : '1.8x Payoff'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Commit Action */}
+                <button 
+                  className="btn-primary" 
+                  style={{ width: '100%', justifyContent: 'center', padding: 14 }}
+                  onClick={() => simTargetEmp && applyIntervention(simTargetEmp.id)}
+                >
+                  <CheckCircle2 size={18} />
+                  Commit Retention Plan to Workforce State
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: RETENTION PLAYBOOK */}
+          {activeTab === 'playbook' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div className="card-title-row">
+                <div>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Prescriptive AI Intervention Catalog</h3>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    Standardized, tested retention initiatives ranked by historical retention boost and cost-efficiency.
                   </p>
                 </div>
               </div>
+
+              <div className="playbook-grid">
+                {RETENTION_PLAYBOOK.map(play => (
+                  <div key={play.id} className="playbook-card">
+                    <div className="playbook-header">
+                      <span className="playbook-category">{play.category}</span>
+                      <span className="risk-badge low">Impact: {play.impactScore}/100</span>
+                    </div>
+
+                    <h4 style={{ fontSize: '1.05rem', fontWeight: 700 }}>{play.title}</h4>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                      {play.description}
+                    </p>
+
+                    <div className="playbook-metrics-row">
+                      <div className="metric-pill">
+                        <span>Retention Lift</span>
+                        <span style={{ color: '#34d399' }}>{play.estimatedRetentionBoost}</span>
+                      </div>
+                      <div className="metric-pill">
+                        <span>Avg Cost</span>
+                        <span>{play.avgCostPerEmployee}</span>
+                      </div>
+                      <div className="metric-pill">
+                        <span>Target Segment</span>
+                        <span>{play.targetRisk}</span>
+                      </div>
+                      <div className="metric-pill">
+                        <span>Rollout Speed</span>
+                        <span>{play.implementationTime}</span>
+                      </div>
+                    </div>
+
+                    <button 
+                      className="btn-primary" 
+                      style={{ marginTop: 8, justifyContent: 'center' }}
+                      onClick={() => showToast(`Initiated automated workflow for ${play.title}`)}
+                    >
+                      <PlayCircle size={16} /> Deploy Strategy
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
-            
-            <div className="modal-footer">
-              <button className="btn-outline" onClick={() => setReviewModalOpen(false)}>
-                Cancel
+          )}
+
+          {/* TAB 5: ML MODEL INTELLIGENCE & DATASET INGESTION (PHASE 2 READY) */}
+          {activeTab === 'models' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {/* Benchmark Summary */}
+              <div className="chart-card">
+                <div className="card-title-row">
+                  <div>
+                    <h3 className="card-title">
+                      <Cpu size={18} color="#6366f1" />
+                      Active Model Architecture & Benchmarks
+                    </h3>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                      Architecture: <strong>{MODEL_BENCHMARKS.activeModel}</strong> • {MODEL_BENCHMARKS.trainedOn}
+                    </p>
+                  </div>
+                  <span className="card-badge" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#34d399' }}>
+                    Production Ready
+                  </span>
+                </div>
+
+                <div className="ml-benchmark-grid" style={{ marginTop: 14 }}>
+                  <div className="ml-metric-box">
+                    <div className="val">{MODEL_BENCHMARKS.accuracy}</div>
+                    <div className="lbl">Overall Accuracy</div>
+                  </div>
+                  <div className="ml-metric-box">
+                    <div className="val">{MODEL_BENCHMARKS.rocAuc}</div>
+                    <div className="lbl">ROC-AUC Score</div>
+                  </div>
+                  <div className="ml-metric-box">
+                    <div className="val">{MODEL_BENCHMARKS.precision}</div>
+                    <div className="lbl">Precision</div>
+                  </div>
+                  <div className="ml-metric-box">
+                    <div className="val">{MODEL_BENCHMARKS.recall}</div>
+                    <div className="lbl">Recall (Flight Risk)</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Feature Importance & Ingestion Dropzone */}
+              <div className="grid-2-col">
+                {/* Feature Importance Bar Chart */}
+                <div className="chart-card">
+                  <div className="card-title-row">
+                    <h3 className="card-title">
+                      <BarChart3 size={18} color="#06b6d4" />
+                      Top Predictive Feature Importances (SHAP Values)
+                    </h3>
+                  </div>
+                  <div style={{ height: 260, width: '100%' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart 
+                        data={MODEL_BENCHMARKS.topFeatures} 
+                        layout="vertical"
+                        margin={{ top: 5, right: 20, left: 60, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                        <XAxis type="number" stroke="#64748b" fontSize={11} domain={[0, 0.35]} />
+                        <YAxis dataKey="feature" type="category" stroke="#94a3b8" fontSize={11} width={130} />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#0d1322', borderColor: 'rgba(255,255,255,0.1)', borderRadius: 10 }}
+                          formatter={(val) => [(val * 100).toFixed(1) + '%', 'Relative Weight']}
+                        />
+                        <Bar dataKey="importance" fill="#6366f1" radius={[0, 6, 6, 0]}>
+                          {MODEL_BENCHMARKS.topFeatures.map((entry, index) => (
+                            <Cell key={`feat-${index}`} fill={index === 0 ? '#f43f5e' : index === 1 ? '#38bdf8' : '#818cf8'} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Phase 2 Dataset Ingestion Portal */}
+                <div className="chart-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    <div className="card-title-row">
+                      <h3 className="card-title">
+                        <Database size={18} color="#818cf8" />
+                        Phase 2: Ingest Custom Dataset
+                      </h3>
+                    </div>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 8 }}>
+                      Once you place your CSV/Excel dataset file in the workspace, this pipeline will train and cross-validate custom XGBoost & Random Forest models.
+                    </p>
+                  </div>
+
+                  <div 
+                    className="dropzone-box"
+                    onClick={() => {
+                      setUploadedDatasetName('hr_workforce_dataset.csv');
+                      showToast('Dataset referenced! Ready for Phase 2 model training.');
+                    }}
+                  >
+                    <Upload size={32} color="#6366f1" />
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>
+                        {uploadedDatasetName ? `Loaded: ${uploadedDatasetName}` : 'Drop or Reference Dataset File (CSV / XLSX)'}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                        Supports IBM HR Attrition, Kaggle HR Analytics, or custom HRMS schemas
+                      </div>
+                    </div>
+                  </div>
+
+                  <button 
+                    className="btn-primary" 
+                    style={{ width: '100%', justifyContent: 'center' }}
+                    onClick={() => {
+                      setIsTrainingSimulating(true);
+                      showToast('Triggering pipeline validation...');
+                      setTimeout(() => {
+                        setIsTrainingSimulating(false);
+                        showToast('Dataset schema validated! Ready for ML training execution in Phase 2.');
+                      }, 1800);
+                    }}
+                  >
+                    <RefreshCw size={16} className={isTrainingSimulating ? 'pulse-dot' : ''} />
+                    {isTrainingSimulating ? 'Validating Schema & Preprocessing...' : 'Initiate Phase 2 Training Pipeline'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* 360 Employee Detail & Intervention Modal */}
+      {isModalOpen && selectedEmployee && (
+        <div className="modal-backdrop" onClick={() => setIsModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <img 
+                  src={selectedEmployee.avatar} 
+                  alt={selectedEmployee.name} 
+                  style={{ width: 54, height: 54, borderRadius: 12, objectFit: 'cover' }} 
+                />
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{selectedEmployee.name}</h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    {selectedEmployee.role} • {selectedEmployee.department} • ID: {selectedEmployee.id}
+                  </p>
+                </div>
+              </div>
+              <button className="close-btn" onClick={() => setIsModalOpen(false)}>
+                <X size={20} />
               </button>
-              <button className="btn-primary" onClick={handleCommitRetentionPlan}>
-                Commit Retention Plan
+            </div>
+
+            {/* Quick Metrics Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+              <div className="ml-metric-box">
+                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#f43f5e' }}>{selectedEmployee.riskScore}%</div>
+                <div className="lbl">Risk Score</div>
+              </div>
+              <div className="ml-metric-box">
+                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#38bdf8' }}>${(selectedEmployee.salary / 1000).toFixed(0)}k</div>
+                <div className="lbl">Base Salary</div>
+              </div>
+              <div className="ml-metric-box">
+                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#eab308' }}>{selectedEmployee.overtimeHoursMonth}h</div>
+                <div className="lbl">Monthly OT</div>
+              </div>
+              <div className="ml-metric-box">
+                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#10b981' }}>{selectedEmployee.tenureYears} yrs</div>
+                <div className="lbl">Tenure</div>
+              </div>
+            </div>
+
+            {/* Qualitative Notes & Drivers */}
+            <div style={{ background: 'var(--bg-input)', padding: 18, borderRadius: 14, border: '1px solid var(--border-subtle)' }}>
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 8 }}>
+                Primary Flight Risk Drivers & AI Diagnostic
+              </h4>
+              <div className="driver-tags" style={{ marginBottom: 12 }}>
+                {selectedEmployee.primaryDrivers.map((d, i) => (
+                  <span key={i} className="driver-tag" style={{ background: 'rgba(244, 63, 94, 0.15)', color: '#fb7185', borderColor: 'rgba(244, 63, 94, 0.3)' }}>
+                    {d}
+                  </span>
+                ))}
+              </div>
+              <p style={{ fontSize: '0.88rem', color: 'var(--text-main)', lineHeight: 1.5 }}>
+                "{selectedEmployee.notes}"
+              </p>
+            </div>
+
+            {/* Action Bar */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, borderTop: '1px solid var(--border-subtle)', paddingTop: 16 }}>
+              <button className="btn-secondary" onClick={() => setIsModalOpen(false)}>
+                Close
+              </button>
+              <button 
+                className="btn-primary"
+                onClick={() => {
+                  setSimTargetEmp(selectedEmployee);
+                  setIsModalOpen(false);
+                  setActiveTab('simulator');
+                }}
+              >
+                <Sliders size={16} /> Open in What-If Simulator
               </button>
             </div>
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function KpiCard({ title, value, suffix, trend, isPositive, color, id, onClick }) {
-  const TrendIcon = isPositive ? ArrowUpRight : ArrowDownRight;
-  return (
-    <div className={`kpi-card glass-panel theme-${color}`} id={id} onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default', transition: 'transform 0.2s', ...(onClick ? {':hover': {transform: 'translateY(-2px)'}} : {}) }}>
-      <h3 className="kpi-title">{title}</h3>
-      <div className="kpi-main">
-        <span className="kpi-value">{value}</span>
-        {suffix && <span className="kpi-suffix">{suffix}</span>}
-      </div>
-      <div className={`kpi-trend ${isPositive ? 'trend-up' : 'trend-down'}`}>
-        <TrendIcon size={16} />
-        <span>{trend}</span>
-      </div>
-    </div>
-  );
-}
-
-function Factor({ label, pct, color }) {
-  return (
-    <div className="factor-item">
-      <div className="factor-header">
-        <span className="factor-name">{label}</span>
-        <span className="factor-pct">{pct}%</span>
-      </div>
-      <div className="factor-bar-bg">
-        <div className="factor-bar-fill slide-in" style={{ width: `${pct}%`, background: color }}></div>
-      </div>
-    </div>
-  );
-}
-
-function EventItem({ type, title, meta, onAction }) {
-  return (
-    <div className={`event-item event-${type}`} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-      <div style={{display: 'flex', gap: '1rem', flex: 1}}>
-        <div className="event-indicator"></div>
-        <div className="event-content">
-          <h4 className="event-title">{title}</h4>
-          <p className="event-meta">{meta}</p>
-        </div>
-      </div>
-      {onAction && <button className={`btn-outline opacity-75`} onClick={onAction} style={{padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '6px', background: 'transparent', border: `1px solid var(--accent-${type === 'danger' ? 'red' : 'blue'})`, color: `var(--accent-${type==='danger'?'red':'blue'})`, cursor: 'pointer', flexShrink: 0, fontWeight: 500}}>Take Action</button>}
     </div>
   );
 }
