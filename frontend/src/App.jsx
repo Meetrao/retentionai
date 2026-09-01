@@ -34,7 +34,7 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [notification, setNotification] = useState(null);
 
-  // Simulator State (Initialized with Aria Chen EMP-1082)
+  // Simulator State (Initialized with Aarav Sharma EMP-1082)
   const [simTargetEmp, setSimTargetEmp] = useState(INITIAL_EMPLOYEES[0]);
   const [simSalaryDelta, setSimSalaryDelta] = useState(12); // +12% salary adjustment
   const [simOvertimeHours, setSimOvertimeHours] = useState(15); // reduced to 15h
@@ -289,12 +289,12 @@ export default function App() {
             </button>
             <div className="user-profile-badge">
               <img 
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" 
+                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80" 
                 alt="Profile" 
                 className="user-avatar"
               />
               <div style={{ lineHeight: 1.2 }}>
-                <div style={{ fontSize: '0.82rem', fontWeight: 700 }}>Alex Morgan</div>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700 }}>Meet Rao</div>
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{activeRole}</div>
               </div>
             </div>

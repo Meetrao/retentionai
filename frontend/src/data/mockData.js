@@ -1,10 +1,10 @@
 export const INITIAL_EMPLOYEES = [
   {
     id: "EMP-1082",
-    name: "Aria Chen",
+    name: "Aarav Sharma",
     role: "Senior Fullstack Engineer",
     department: "Engineering",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80",
     tenureYears: 3.2,
     salary: 2850000, // ₹28.5 LPA
     salaryMarketRatio: 0.88,
@@ -22,7 +22,7 @@ export const INITIAL_EMPLOYEES = [
   },
   {
     id: "EMP-1045",
-    name: "Marcus Vance",
+    name: "Rohan Verma",
     role: "Lead Product Designer",
     department: "Product",
     avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
@@ -43,7 +43,7 @@ export const INITIAL_EMPLOYEES = [
   },
   {
     id: "EMP-1120",
-    name: "Sarah Jenkins",
+    name: "Priya Nair",
     role: "Enterprise Account Executive",
     department: "Sales",
     avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
@@ -64,7 +64,7 @@ export const INITIAL_EMPLOYEES = [
   },
   {
     id: "EMP-1099",
-    name: "Devon Brooks",
+    name: "Vikram Malhotra",
     role: "DevOps / SRE Architect",
     department: "Engineering",
     avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
@@ -85,7 +85,7 @@ export const INITIAL_EMPLOYEES = [
   },
   {
     id: "EMP-1014",
-    name: "Elena Rostova",
+    name: "Ananya Iyer",
     role: "Senior Marketing Manager",
     department: "Marketing",
     avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80",
@@ -127,7 +127,7 @@ export const INITIAL_EMPLOYEES = [
   },
   {
     id: "EMP-1077",
-    name: "Liam O'Connor",
+    name: "Siddharth Mehta",
     role: "Financial Analyst",
     department: "Finance",
     avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80",
@@ -148,7 +148,7 @@ export const INITIAL_EMPLOYEES = [
   },
   {
     id: "EMP-1204",
-    name: "Zoe Washington",
+    name: "Sneha Joshi",
     role: "Talent Acquisition Specialist",
     department: "Human Resources",
     avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80",
