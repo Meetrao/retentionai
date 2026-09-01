@@ -6,7 +6,7 @@ export const INITIAL_EMPLOYEES = [
     department: "Engineering",
     avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
     tenureYears: 3.2,
-    salary: 138000,
+    salary: 2850000, // ₹28.5 LPA
     salaryMarketRatio: 0.88,
     overtimeHoursMonth: 34,
     lastPromotionMonths: 28,
@@ -27,7 +27,7 @@ export const INITIAL_EMPLOYEES = [
     department: "Product",
     avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
     tenureYears: 4.5,
-    salary: 145000,
+    salary: 3200000, // ₹32 LPA
     salaryMarketRatio: 0.92,
     overtimeHoursMonth: 22,
     lastPromotionMonths: 32,
@@ -48,7 +48,7 @@ export const INITIAL_EMPLOYEES = [
     department: "Sales",
     avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
     tenureYears: 1.8,
-    salary: 115000,
+    salary: 2400000, // ₹24 LPA
     salaryMarketRatio: 1.05,
     overtimeHoursMonth: 42,
     lastPromotionMonths: 18,
@@ -69,7 +69,7 @@ export const INITIAL_EMPLOYEES = [
     department: "Engineering",
     avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
     tenureYears: 5.1,
-    salary: 162000,
+    salary: 3650000, // ₹36.5 LPA
     salaryMarketRatio: 1.02,
     overtimeHoursMonth: 28,
     lastPromotionMonths: 24,
@@ -90,7 +90,7 @@ export const INITIAL_EMPLOYEES = [
     department: "Marketing",
     avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80",
     tenureYears: 2.7,
-    salary: 118000,
+    salary: 2200000, // ₹22 LPA
     salaryMarketRatio: 0.96,
     overtimeHoursMonth: 12,
     lastPromotionMonths: 14,
@@ -111,7 +111,7 @@ export const INITIAL_EMPLOYEES = [
     department: "Customer Success",
     avatar: "https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=150&auto=format&fit=crop&q=80",
     tenureYears: 2.1,
-    salary: 98000,
+    salary: 1850000, // ₹18.5 LPA
     salaryMarketRatio: 0.85,
     overtimeHoursMonth: 30,
     lastPromotionMonths: 22,
@@ -132,7 +132,7 @@ export const INITIAL_EMPLOYEES = [
     department: "Finance",
     avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80",
     tenureYears: 3.8,
-    salary: 105000,
+    salary: 1900000, // ₹19 LPA
     salaryMarketRatio: 0.98,
     overtimeHoursMonth: 16,
     lastPromotionMonths: 12,
@@ -153,7 +153,7 @@ export const INITIAL_EMPLOYEES = [
     department: "Human Resources",
     avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80",
     tenureYears: 1.4,
-    salary: 86000,
+    salary: 1450000, // ₹14.5 LPA
     salaryMarketRatio: 0.94,
     overtimeHoursMonth: 26,
     lastPromotionMonths: 16,
@@ -170,12 +170,12 @@ export const INITIAL_EMPLOYEES = [
 ];
 
 export const DEPARTMENT_METRICS = [
-  { department: "Sales", headCount: 42, avgRisk: 48.6, highRiskCount: 9, avgSalary: 112000, attritionForecast: "19.2%" },
-  { department: "Engineering", headCount: 88, avgRisk: 42.1, highRiskCount: 14, avgSalary: 146000, attritionForecast: "14.5%" },
-  { department: "Customer Success", headCount: 34, avgRisk: 46.8, highRiskCount: 7, avgSalary: 94000, attritionForecast: "17.8%" },
-  { department: "Product", headCount: 26, avgRisk: 38.4, highRiskCount: 4, avgSalary: 139000, attritionForecast: "11.2%" },
-  { department: "Marketing", headCount: 22, avgRisk: 28.5, highRiskCount: 2, avgSalary: 108000, attritionForecast: "8.4%" },
-  { department: "Finance & HR", headCount: 28, avgRisk: 24.2, highRiskCount: 2, avgSalary: 102000, attritionForecast: "6.9%" },
+  { department: "Sales", headCount: 42, avgRisk: 48.6, highRiskCount: 9, avgSalary: 2200000, attritionForecast: "19.2%" },
+  { department: "Engineering", headCount: 88, avgRisk: 42.1, highRiskCount: 14, avgSalary: 3200000, attritionForecast: "14.5%" },
+  { department: "Customer Success", headCount: 34, avgRisk: 46.8, highRiskCount: 7, avgSalary: 1850000, attritionForecast: "17.8%" },
+  { department: "Product", headCount: 26, avgRisk: 38.4, highRiskCount: 4, avgSalary: 3000000, attritionForecast: "11.2%" },
+  { department: "Marketing", headCount: 22, avgRisk: 28.5, highRiskCount: 2, avgSalary: 2100000, attritionForecast: "8.4%" },
+  { department: "Finance & HR", headCount: 28, avgRisk: 24.2, highRiskCount: 2, avgSalary: 1950000, attritionForecast: "6.9%" },
 ];
 
 export const RETENTION_PLAYBOOK = [
@@ -183,10 +183,10 @@ export const RETENTION_PLAYBOOK = [
     id: "STRAT-1",
     title: "Market Compensation Calibration",
     category: "Compensation",
-    description: "Align base pay for employees lagging below the 95th percentile market benchmark.",
+    description: "Align base pay for employees lagging below the 95th percentile Indian tech market benchmark.",
     targetRisk: "High / Critical",
     estimatedRetentionBoost: "+32%",
-    avgCostPerEmployee: "$8,500 / yr",
+    avgCostPerEmployee: "₹2,50,000 / yr",
     implementationTime: "1-2 Weeks",
     impactScore: 94
   },
@@ -197,7 +197,7 @@ export const RETENTION_PLAYBOOK = [
     description: "Institute max 15h monthly overtime threshold and dual-rotation on-call scheduling.",
     targetRisk: "High (Burnout Driven)",
     estimatedRetentionBoost: "+28%",
-    avgCostPerEmployee: "$1,200",
+    avgCostPerEmployee: "₹45,000",
     implementationTime: "Immediate",
     impactScore: 89
   },
@@ -208,7 +208,7 @@ export const RETENTION_PLAYBOOK = [
     description: "Formulate concrete 6-month promotion milestones with designated executive sponsor.",
     targetRisk: "Tenure > 2.5 yrs",
     estimatedRetentionBoost: "+25%",
-    avgCostPerEmployee: "$500",
+    avgCostPerEmployee: "₹25,000",
     implementationTime: "2-3 Weeks",
     impactScore: 86
   },
@@ -216,10 +216,10 @@ export const RETENTION_PLAYBOOK = [
     id: "STRAT-4",
     title: "Flexible Hybrid / Remote Freedom Policy",
     category: "Flexibility",
-    description: "Expand remote days from 1-2 to 3-4 days/week with $1,000 ergonomic stipend.",
+    description: "Expand remote days from 1-2 to 3-4 days/week with ₹50,000 ergonomic stipend.",
     targetRisk: "Commute / Flexibility Gap",
     estimatedRetentionBoost: "+21%",
-    avgCostPerEmployee: "$1,000",
+    avgCostPerEmployee: "₹50,000",
     implementationTime: "Immediate",
     impactScore: 81
   }

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { 
   Users, TrendingUp, AlertTriangle, ShieldCheck, 
-  DollarSign, Activity, Cpu, Sliders, PlayCircle, 
+  IndianRupee, Activity, Cpu, Sliders, PlayCircle, 
   Lightbulb, Search, Bell, Moon, Sun, ArrowUpRight, 
   ArrowDownRight, CheckCircle2, ChevronRight, X, 
   Upload, FileText, BarChart3, Database, RefreshCw,
@@ -40,7 +40,7 @@ export default function App() {
   const [simOvertimeHours, setSimOvertimeHours] = useState(15); // reduced to 15h
   const [simRemoteDays, setSimRemoteDays] = useState(3); // 3 days/week
   const [simPromotionStatus, setSimPromotionStatus] = useState(true); // fast-track promotion
-  const [simBonusAmount, setSimBonusAmount] = useState(5000);
+  const [simBonusAmount, setSimBonusAmount] = useState(150000); // ₹1.5 Lakhs
 
   // Dataset Ingestion Placeholder (Phase 2 readiness)
   const [uploadedDatasetName, setUploadedDatasetName] = useState(null);
@@ -97,7 +97,7 @@ export default function App() {
     const promoImpact = simPromotionStatus ? 14 : 0;
     
     // Impact of retention bonus
-    const bonusImpact = (simBonusAmount / 1000) * 1.5;
+    const bonusImpact = (simBonusAmount / 50000) * 1.5;
 
     let computedScore = Math.round(baseScore - salaryImpact - otImpact - remoteImpact - promoImpact - bonusImpact);
     computedScore = Math.max(8, Math.min(96, computedScore));
@@ -107,7 +107,7 @@ export default function App() {
     else if (computedScore >= 60) tier = 'High';
     else if (computedScore >= 35) tier = 'Medium';
 
-    // Replacement cost calculation (~1.5x salary)
+    // Replacement cost calculation (~1.5x salary in INR)
     const replacementCost = Math.round(simTargetEmp.salary * 1.5);
     const costSavings = Math.round(replacementCost * ((baseScore - computedScore) / 100));
 
@@ -343,13 +343,13 @@ export default function App() {
                   <div className="kpi-header">
                     <span>Estimated Cost at Risk</span>
                     <div className="kpi-icon" style={{ background: 'rgba(6, 182, 212, 0.1)', color: '#06b6d4' }}>
-                      <DollarSign size={18} />
+                      <IndianRupee size={18} />
                     </div>
                   </div>
                   <div className="kpi-value-row">
-                    <span className="kpi-value">$1.42M</span>
+                    <span className="kpi-value">₹1.18 Cr</span>
                     <span className="kpi-delta negative-good">
-                      <ArrowDownRight size={14} /> $180k saved
+                      <ArrowDownRight size={14} /> ₹15.4 Lakh saved
                     </span>
                   </div>
                   <span className="kpi-subtext">Replacement & retraining turnover cost</span>
@@ -501,7 +501,7 @@ export default function App() {
                     <tr>
                       <th>Employee</th>
                       <th>Department & Role</th>
-                      <th>Tenure / Comp Ratio</th>
+                      <th>Tenure / Compensation</th>
                       <th>Overtime (Mo)</th>
                       <th>Primary Flight Drivers</th>
                       <th>Risk Probability</th>
@@ -526,8 +526,8 @@ export default function App() {
                         </td>
                         <td>
                           <div>{emp.tenureYears} Years</div>
-                          <div style={{ fontSize: '0.75rem', color: emp.salaryMarketRatio < 0.9 ? '#fb7185' : '#34d399' }}>
-                            ${(emp.salary / 1000).toFixed(0)}k ({Math.round(emp.salaryMarketRatio * 100)}% market)
+                          <div style={{ fontSize: '0.75rem', color: emp.salaryMarketRatio < 0.9 ? '#fb7185' : '#34d399', fontWeight: 600 }}>
+                            ₹{(emp.salary / 100000).toFixed(1)} LPA ({Math.round(emp.salaryMarketRatio * 100)}% market)
                           </div>
                         </td>
                         <td>
@@ -610,7 +610,7 @@ export default function App() {
                     <div style={{ flex: 1 }}>
                       <h4 style={{ fontWeight: 700 }}>{simTargetEmp.name}</h4>
                       <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                        {simTargetEmp.department} • Current Base: ${(simTargetEmp.salary).toLocaleString()} • Market Ratio: {Math.round(simTargetEmp.salaryMarketRatio * 100)}%
+                        {simTargetEmp.department} • Current Base: ₹{(simTargetEmp.salary).toLocaleString('en-IN')} (₹{(simTargetEmp.salary / 100000).toFixed(1)} LPA) • Market Ratio: {Math.round(simTargetEmp.salaryMarketRatio * 100)}%
                       </p>
                     </div>
                     <div>
@@ -624,7 +624,7 @@ export default function App() {
                   <div className="slider-group">
                     <div className="slider-header">
                       <span>Base Salary Calibration (%)</span>
-                      <span className="slider-value">+{simSalaryDelta}% (${simTargetEmp ? Math.round(simTargetEmp.salary * (1 + simSalaryDelta / 100)).toLocaleString() : ''})</span>
+                      <span className="slider-value">+{simSalaryDelta}% (₹{simTargetEmp ? Math.round(simTargetEmp.salary * (1 + simSalaryDelta / 100)).toLocaleString('en-IN') : ''})</span>
                     </div>
                     <input 
                       type="range" 
@@ -635,7 +635,7 @@ export default function App() {
                       onChange={(e) => setSimSalaryDelta(Number(e.target.value))}
                       className="custom-range"
                     />
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Brings salary closer to 100%+ of peer benchmark</span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Brings salary closer to 100%+ of peer Indian tech benchmark</span>
                   </div>
 
                   {/* Slider 2: Monthly Overtime Hours */}
@@ -678,13 +678,13 @@ export default function App() {
                   <div className="slider-group">
                     <div className="slider-header">
                       <span>Retention Milestone Bonus</span>
-                      <span className="slider-value">${simBonusAmount.toLocaleString()}</span>
+                      <span className="slider-value">₹{simBonusAmount.toLocaleString('en-IN')}</span>
                     </div>
                     <input 
                       type="range" 
                       min="0" 
-                      max="25000" 
-                      step="1000" 
+                      max="1000000" 
+                      step="25000" 
                       value={simBonusAmount}
                       onChange={(e) => setSimBonusAmount(Number(e.target.value))}
                       className="custom-range"
@@ -695,7 +695,7 @@ export default function App() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-input)', padding: '14px 18px', borderRadius: 12, border: '1px solid var(--border-subtle)' }}>
                     <div>
                       <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>Fast-Track Promotion & Title Review</div>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Sets upcoming promotion milestone in next quarterly cycle</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Sets upcoming promotion milestone in next appraisal cycle</div>
                     </div>
                     <input 
                       type="checkbox" 
@@ -740,12 +740,12 @@ export default function App() {
                 <div style={{ background: 'var(--bg-input)', padding: 18, borderRadius: 14, border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                     <span style={{ color: 'var(--text-muted)' }}>Estimated Replacement Cost Avoided:</span>
-                    <span style={{ fontWeight: 800, color: '#34d399' }}>+${simulatedRisk.costSavings.toLocaleString()}</span>
+                    <span style={{ fontWeight: 800, color: '#34d399' }}>+₹{simulatedRisk.costSavings.toLocaleString('en-IN')}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                     <span style={{ color: 'var(--text-muted)' }}>Calculated Package Cost:</span>
                     <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
-                      ${(Math.round((simTargetEmp?.salary || 0) * (simSalaryDelta / 100)) + simBonusAmount).toLocaleString()}
+                      ₹{(Math.round((simTargetEmp?.salary || 0) * (simSalaryDelta / 100)) + simBonusAmount).toLocaleString('en-IN')}
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', borderTop: '1px solid var(--border-subtle)', paddingTop: 8 }}>
@@ -927,7 +927,7 @@ export default function App() {
                         {uploadedDatasetName ? `Loaded: ${uploadedDatasetName}` : 'Drop or Reference Dataset File (CSV / XLSX)'}
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                        Supports IBM HR Attrition, Kaggle HR Analytics, or custom HRMS schemas
+                        Supports Indian Tech / IT & Global HRMS schemas
                       </div>
                     </div>
                   </div>
@@ -984,8 +984,8 @@ export default function App() {
                 <div className="lbl">Risk Score</div>
               </div>
               <div className="ml-metric-box">
-                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#38bdf8' }}>${(selectedEmployee.salary / 1000).toFixed(0)}k</div>
-                <div className="lbl">Base Salary</div>
+                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#38bdf8' }}>₹{(selectedEmployee.salary / 100000).toFixed(1)} LPA</div>
+                <div className="lbl">Base CTC</div>
               </div>
               <div className="ml-metric-box">
                 <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#eab308' }}>{selectedEmployee.overtimeHoursMonth}h</div>
