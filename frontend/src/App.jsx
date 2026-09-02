@@ -489,7 +489,7 @@ export default function App() {
                 className="user-avatar"
               />
               <div style={{ lineHeight: 1.2 }}>
-                <div style={{ fontSize: '0.82rem', fontWeight: 700 }}>Meet Rao</div>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700 }}>HR Administrator</div>
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{activeRole}</div>
               </div>
             </div>
