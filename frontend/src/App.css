@@ -445,11 +445,17 @@ body {
   border: 1px solid var(--border-subtle);
 }
 
-.user-avatar {
-  width: 32px;
-  height: 32px;
+.user-avatar-emoji {
+  width: 34px;
+  height: 34px;
   border-radius: 8px;
-  object-fit: cover;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-muted);
 }
 
 /* Page Content */

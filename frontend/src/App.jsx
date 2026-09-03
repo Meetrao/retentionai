@@ -683,11 +683,9 @@ export default function App() {
               <Bell size={18} />
             </button>
             <div className="user-profile-badge">
-              <img 
-                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80" 
-                alt="Profile" 
-                className="user-avatar"
-              />
+              <div className="user-avatar-emoji">
+                {activeRole === 'HR Executive' ? <Briefcase size={16} /> : activeRole === 'Team Lead' ? <Users size={16} /> : <Cpu size={16} />}
+              </div>
               <div className="user-profile-details">
                 <div style={{ fontSize: '0.82rem', fontWeight: 700 }}>{currentRoleConfig.badge}</div>
                 <div style={{ fontSize: '0.72rem', color: '#818cf8', fontWeight: 600 }}>{activeRole}</div>
