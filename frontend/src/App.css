@@ -83,6 +83,18 @@ body {
   display: flex;
   min-height: 100vh;
   background-color: var(--bg-app);
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Mobile Nav Backdrop */
+.mobile-nav-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 90;
+  animation: fadeIn 0.2s ease-out;
 }
 
 /* Sidebar */
@@ -94,15 +106,32 @@ body {
   flex-direction: column;
   padding: 24px 16px;
   flex-shrink: 0;
-  transition: all 0.3s ease;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), all 0.3s ease;
 }
 
 .brand-wrapper {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   padding: 0 8px 20px 8px;
   border-bottom: 1px solid var(--border-subtle);
+}
+
+.mobile-drawer-close {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.mobile-drawer-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
 }
 
 .brand-icon-box {
@@ -277,8 +306,8 @@ body {
 
 /* Header */
 .top-header {
-  height: 72px;
-  padding: 0 32px;
+  min-height: 72px;
+  padding: 12px 32px;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
@@ -288,12 +317,41 @@ body {
   top: 0;
   z-index: 20;
   backdrop-filter: blur(12px);
+  gap: 16px;
+}
+
+.header-left-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.mobile-menu-trigger {
+  display: none;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.mobile-menu-trigger:hover {
+  border-color: var(--border-focus);
+  background: rgba(99, 102, 241, 0.1);
 }
 
 .header-left {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
 .breadcrumb-bar {
@@ -303,6 +361,9 @@ body {
   font-size: 0.74rem;
   color: var(--text-faint);
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .breadcrumb-bar span.active {
@@ -315,6 +376,9 @@ body {
   font-weight: 800;
   color: var(--text-main);
   letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .search-box {
@@ -326,8 +390,9 @@ body {
   padding: 8px 14px;
   border-radius: 10px;
   width: 320px;
+  max-width: 100%;
   color: var(--text-muted);
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, width 0.2s;
 }
 
 .search-box:focus-within {
@@ -346,7 +411,8 @@ body {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .icon-btn {
@@ -860,7 +926,7 @@ body {
 /* Retention Playbook Grid */
 .playbook-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 20px;
 }
 
@@ -956,7 +1022,7 @@ body {
   align-items: center;
   justify-content: center;
   z-index: 100;
-  padding: 20px;
+  padding: 16px;
   animation: fadeIn 0.2s ease-out;
 }
 
@@ -969,15 +1035,15 @@ body {
   background: var(--bg-sidebar);
   border: 1px solid var(--border-subtle);
   border-radius: 20px;
-  max-width: 780px;
+  max-width: 760px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: var(--shadow-lg);
-  padding: 28px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 20px;
 }
 
 .modal-header {
@@ -986,6 +1052,21 @@ body {
   justify-content: space-between;
   border-bottom: 1px solid var(--border-subtle);
   padding-bottom: 16px;
+}
+
+.modal-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.modal-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 16px;
+  flex-wrap: wrap;
 }
 
 .close-btn {
@@ -1001,33 +1082,6 @@ body {
 .close-btn:hover {
   background: rgba(255, 255, 255, 0.1);
   color: var(--text-main);
-}
-
-/* Responsive adjustments */
-@media (max-width: 1024px) {
-  .grid-2-col, .grid-3-col, .simulator-layout {
-    grid-template-columns: 1fr;
-  }
-  .ml-benchmark-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .app-container {
-    flex-direction: column;
-  }
-  .sidebar {
-    width: 100%;
-    border-right: none;
-    border-bottom: 1px solid var(--border-subtle);
-  }
-  .top-header {
-    padding: 0 16px;
-  }
-  .content-body {
-    padding: 20px 16px;
-  }
 }
 
 /* Recharts Customizations & Light Theme Support */
@@ -1061,4 +1115,220 @@ body {
 .light-theme .recharts-tooltip-cursor {
   fill: rgba(99, 102, 241, 0.08) !important;
 }
+
+/* ==================================================== */
+/* MULTI-DEVICE RESPONSIVE BREAKPOINTS (Mobile/Tablet) */
+/* ==================================================== */
+
+/* Large Tablets & Small Desktops (<= 1280px) */
+@media (max-width: 1280px) {
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Medium Tablets & Below (<= 1024px) */
+@media (max-width: 1024px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 285px;
+    max-width: 85vw;
+    height: 100vh;
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-lg);
+    overflow-y: auto;
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .mobile-drawer-close {
+    display: flex;
+  }
+
+  .mobile-menu-trigger {
+    display: inline-flex;
+  }
+
+  .grid-2-col, 
+  .simulator-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .grid-3-col {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .ml-benchmark-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .content-body {
+    padding: 24px 20px;
+    gap: 24px;
+  }
+
+  .top-header {
+    padding: 12px 20px;
+  }
+}
+
+/* Small Tablets & Large Phones (<= 768px) */
+@media (max-width: 768px) {
+  .top-header {
+    padding: 10px 16px;
+    gap: 12px;
+  }
+
+  .page-title {
+    font-size: 1.08rem;
+  }
+
+  .breadcrumb-role {
+    display: none;
+  }
+
+  .search-box {
+    order: 3;
+    width: 100%;
+    max-width: 100%;
+    margin-top: 2px;
+  }
+
+  .user-profile-details {
+    display: none;
+  }
+
+  .user-profile-badge {
+    padding: 4px;
+    background: transparent;
+    border: none;
+  }
+
+  .content-body {
+    padding: 16px 12px;
+    gap: 18px;
+  }
+
+  .kpi-card {
+    padding: 16px 18px;
+  }
+
+  .kpi-value {
+    font-size: 1.55rem;
+  }
+
+  .chart-card {
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .card-title {
+    font-size: 0.95rem;
+  }
+
+  .grid-3-col {
+    grid-template-columns: 1fr;
+  }
+
+  .toolbar-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .filter-group {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-select {
+    width: 100%;
+  }
+
+  .gauge-circle {
+    width: 140px;
+    height: 140px;
+  }
+
+  .gauge-number {
+    font-size: 2.2rem;
+  }
+
+  .modal-content {
+    padding: 18px;
+    border-radius: 16px;
+  }
+
+  .modal-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+
+/* Mobile Phones (<= 480px) */
+@media (max-width: 480px) {
+  .kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .kpi-card {
+    padding: 14px 16px;
+  }
+
+  .kpi-value {
+    font-size: 1.4rem;
+  }
+
+  .ml-benchmark-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .modal-footer-actions {
+    flex-direction: column;
+  }
+
+  .modal-footer-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .modal-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    position: relative;
+  }
+
+  .modal-header .close-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
+  .data-table th, .data-table td {
+    padding: 10px 12px;
+    font-size: 0.78rem;
+  }
+
+  .feed-emp-details h4 {
+    font-size: 0.82rem;
+  }
+
+  .feed-emp-details p {
+    font-size: 0.7rem;
+  }
+}
+
 

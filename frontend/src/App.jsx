@@ -3,7 +3,7 @@ import {
   Users, TrendingUp, AlertTriangle, ShieldCheck, 
   IndianRupee, Activity, Cpu, Sliders, PlayCircle, 
   Lightbulb, Search, Bell, Moon, Sun, ArrowUpRight, 
-  ArrowDownRight, CheckCircle2, ChevronRight, X, 
+  ArrowDownRight, CheckCircle2, ChevronRight, X, Menu,
   Upload, FileText, BarChart3, Database, RefreshCw,
   Clock, Award, Sparkles, UserCheck, Briefcase, Building2,
   CheckSquare, Filter, Layers, HelpCircle
@@ -27,9 +27,15 @@ export default function App() {
   const [activeRole, setActiveRole] = useState('HR Executive');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
   const [riskFilter, setRiskFilter] = useState('All');
+
+  const navigateTo = (tab) => {
+    setActiveTab(tab);
+    setIsMobileMenuOpen(false);
+  };
 
   // Live Backend State
   const [employees, setEmployees] = useState(INITIAL_EMPLOYEES);
@@ -309,16 +315,34 @@ export default function App() {
         </div>
       )}
 
+      {/* Mobile Drawer Backdrop */}
+      {isMobileMenuOpen && (
+        <div 
+          className="mobile-nav-backdrop" 
+          onClick={() => setIsMobileMenuOpen(false)}
+          aria-label="Close navigation overlay"
+        />
+      )}
+
       {/* Sidebar Navigation */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="brand-wrapper">
-          <div className="brand-icon-box">
-            <Cpu size={22} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div className="brand-icon-box">
+              <Cpu size={22} />
+            </div>
+            <div className="brand-text">
+              <h1>RetentionAI</h1>
+              <span>Enterprise ML Platform</span>
+            </div>
           </div>
-          <div className="brand-text">
-            <h1>RetentionAI</h1>
-            <span>Enterprise ML Platform</span>
-          </div>
+          <button 
+            className="mobile-drawer-close" 
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-label="Close menu"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         {/* Role Selector */}
@@ -333,6 +357,7 @@ export default function App() {
             onChange={(e) => {
               setActiveRole(e.target.value);
               showToast(`Switched view to ${e.target.value}`);
+              setIsMobileMenuOpen(false);
             }}
           >
             <option value="HR Executive">HR Executive / People Ops</option>
@@ -347,7 +372,7 @@ export default function App() {
           
           <button 
             className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => navigateTo('dashboard')}
           >
             <div className="nav-item-content">
               <BarChart3 size={18} />
@@ -357,7 +382,7 @@ export default function App() {
 
           <button 
             className={`nav-item ${activeTab === 'directory' ? 'active' : ''}`}
-            onClick={() => setActiveTab('directory')}
+            onClick={() => navigateTo('directory')}
           >
             <div className="nav-item-content">
               <Users size={18} />
@@ -368,7 +393,7 @@ export default function App() {
 
           <button 
             className={`nav-item ${activeTab === 'departments' ? 'active' : ''}`}
-            onClick={() => setActiveTab('departments')}
+            onClick={() => navigateTo('departments')}
           >
             <div className="nav-item-content">
               <Building2 size={18} />
@@ -378,7 +403,7 @@ export default function App() {
 
           <button 
             className={`nav-item ${activeTab === 'simulator' ? 'active' : ''}`}
-            onClick={() => setActiveTab('simulator')}
+            onClick={() => navigateTo('simulator')}
           >
             <div className="nav-item-content">
               <Sliders size={18} />
@@ -391,7 +416,7 @@ export default function App() {
           
           <button 
             className={`nav-item ${activeTab === 'playbook' ? 'active' : ''}`}
-            onClick={() => setActiveTab('playbook')}
+            onClick={() => navigateTo('playbook')}
           >
             <div className="nav-item-content">
               <Lightbulb size={18} />
@@ -401,7 +426,7 @@ export default function App() {
 
           <button 
             className={`nav-item ${activeTab === 'interventions' ? 'active' : ''}`}
-            onClick={() => setActiveTab('interventions')}
+            onClick={() => navigateTo('interventions')}
           >
             <div className="nav-item-content">
               <CheckSquare size={18} />
@@ -412,7 +437,7 @@ export default function App() {
 
           <button 
             className={`nav-item ${activeTab === 'models' ? 'active' : ''}`}
-            onClick={() => setActiveTab('models')}
+            onClick={() => navigateTo('models')}
           >
             <div className="nav-item-content">
               <Cpu size={18} />
@@ -434,31 +459,40 @@ export default function App() {
       <main className="main-wrapper">
         {/* Top Header */}
         <header className="top-header">
-          <div className="header-left">
-            <div className="breadcrumb-bar">
-              <span>RetentionAI</span>
-              <ChevronRight size={12} />
-              <span>{activeRole}</span>
-              <ChevronRight size={12} />
-              <span className="active">
-                {activeTab === 'dashboard' && 'Executive Dashboard'}
-                {activeTab === 'directory' && 'Flight Risk Explorer'}
-                {activeTab === 'departments' && 'Department Intelligence'}
-                {activeTab === 'simulator' && 'What-If Simulation'}
-                {activeTab === 'playbook' && 'Retention Strategy Catalog'}
-                {activeTab === 'interventions' && 'Intervention Tracker & ROI'}
-                {activeTab === 'models' && 'ML Model Intelligence & Benchmarks'}
-              </span>
+          <div className="header-left-group">
+            <button 
+              className="mobile-menu-trigger" 
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label="Toggle Navigation"
+            >
+              {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+            <div className="header-left">
+              <div className="breadcrumb-bar">
+                <span>RetentionAI</span>
+                <ChevronRight size={12} />
+                <span className="breadcrumb-role">{activeRole}</span>
+                <ChevronRight size={12} />
+                <span className="active">
+                  {activeTab === 'dashboard' && 'Executive Dashboard'}
+                  {activeTab === 'directory' && 'Flight Risk Explorer'}
+                  {activeTab === 'departments' && 'Department Intelligence'}
+                  {activeTab === 'simulator' && 'What-If Simulation'}
+                  {activeTab === 'playbook' && 'Retention Strategy Catalog'}
+                  {activeTab === 'interventions' && 'Intervention Tracker & ROI'}
+                  {activeTab === 'models' && 'ML Model Intelligence & Benchmarks'}
+                </span>
+              </div>
+              <h2 className="page-title">
+                {activeTab === 'dashboard' && 'Workforce Attrition Overview'}
+                {activeTab === 'directory' && 'Employee Risk Explorer'}
+                {activeTab === 'departments' && 'Departmental Risk Distribution'}
+                {activeTab === 'simulator' && 'AI What-If Retention Simulator'}
+                {activeTab === 'playbook' && 'Prescriptive Retention Playbook'}
+                {activeTab === 'interventions' && 'Mitigation Actions & ROI Log'}
+                {activeTab === 'models' && 'Champion ML Architecture & Benchmarks'}
+              </h2>
             </div>
-            <h2 className="page-title">
-              {activeTab === 'dashboard' && 'Workforce Attrition Overview'}
-              {activeTab === 'directory' && 'Employee Risk Explorer'}
-              {activeTab === 'departments' && 'Departmental Risk Distribution'}
-              {activeTab === 'simulator' && 'AI What-If Retention Simulator'}
-              {activeTab === 'playbook' && 'Prescriptive Retention Playbook'}
-              {activeTab === 'interventions' && 'Mitigation Actions & ROI Log'}
-              {activeTab === 'models' && 'Champion ML Architecture & Benchmarks'}
-            </h2>
           </div>
 
           <div className="search-box">
@@ -477,7 +511,7 @@ export default function App() {
             </button>
             <button className="icon-btn" onClick={() => {
               setRiskFilter('Critical');
-              setActiveTab('directory');
+              navigateTo('directory');
               showToast('Filtered directory by Critical Risk alerts');
             }}>
               <Bell size={18} />
@@ -488,7 +522,7 @@ export default function App() {
                 alt="Profile" 
                 className="user-avatar"
               />
-              <div style={{ lineHeight: 1.2 }}>
+              <div className="user-profile-details">
                 <div style={{ fontSize: '0.82rem', fontWeight: 700 }}>HR Administrator</div>
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{activeRole}</div>
               </div>
@@ -1393,7 +1427,7 @@ export default function App() {
             </div>
 
             {/* Quick Metrics Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+            <div className="modal-metrics-grid">
               <div className="ml-metric-box">
                 <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#f43f5e' }}>{selectedEmployee.riskScore}%</div>
                 <div className="lbl">Risk Score</div>
@@ -1430,7 +1464,7 @@ export default function App() {
             </div>
 
             {/* Action Bar */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, borderTop: '1px solid var(--border-subtle)', paddingTop: 16 }}>
+            <div className="modal-footer-actions">
               <button className="btn-secondary" onClick={() => setIsModalOpen(false)}>
                 Close
               </button>
@@ -1439,7 +1473,7 @@ export default function App() {
                 onClick={() => {
                   setSimTargetEmp(selectedEmployee);
                   setIsModalOpen(false);
-                  setActiveTab('simulator');
+                  navigateTo('simulator');
                 }}
               >
                 <Sliders size={16} /> Open in What-If Simulator
