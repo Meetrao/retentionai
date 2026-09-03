@@ -24,25 +24,67 @@ const API_BASE_URL = 'http://127.0.0.1:8000';
 
 const VALID_TABS = ['dashboard', 'directory', 'departments', 'simulator', 'playbook', 'interventions', 'models'];
 
-const getInitialTab = () => {
-  if (typeof window !== 'undefined') {
-    const hash = window.location.hash.replace(/^#\/?/, '').trim();
-    if (VALID_TABS.includes(hash)) {
-      return hash;
-    }
-    const saved = localStorage.getItem('retentionai_active_tab');
-    if (saved && VALID_TABS.includes(saved)) {
-      return saved;
-    }
+export const ROLE_PERMISSIONS = {
+  'HR Executive': {
+    name: 'HR Executive / People Ops',
+    badge: 'HR Administrator',
+    tagline: 'Enterprise Workforce Overview, Departmental Capacity & Retention Policy Governance',
+    defaultTab: 'dashboard',
+    allowedTabs: ['dashboard', 'directory', 'departments', 'playbook', 'interventions'],
+    canExportDossier: true,
+    canSimulate: true,
+    canApprovePlans: true,
+    canRetrainModel: false
+  },
+  'Team Lead': {
+    name: 'Team Lead / Department Mgr',
+    badge: 'Engineering Team Lead',
+    tagline: 'Direct Team Flight Risk Diagnosis, 1-on-1 What-If Levers & Retention Proposals',
+    defaultTab: 'simulator',
+    allowedTabs: ['directory', 'simulator', 'interventions'],
+    canExportDossier: false,
+    canSimulate: true,
+    canApprovePlans: false,
+    canRetrainModel: false
+  },
+  'Data Analyst': {
+    name: 'Data Scientist / ML Ops',
+    badge: 'ML Ops Specialist',
+    tagline: 'Champion Soft-Voting Ensemble Metrics, ROC-AUC, Feature Importance & Pipeline Retraining',
+    defaultTab: 'models',
+    allowedTabs: ['models', 'directory', 'simulator'],
+    canExportDossier: false,
+    canSimulate: true,
+    canApprovePlans: false,
+    canRetrainModel: true
   }
-  return 'dashboard';
 };
 
 const getInitialRole = () => {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('retentionai_active_role') || 'HR Executive';
+    const saved = localStorage.getItem('retentionai_active_role');
+    if (saved && ROLE_PERMISSIONS[saved]) {
+      return saved;
+    }
   }
   return 'HR Executive';
+};
+
+const getInitialTab = () => {
+  if (typeof window !== 'undefined') {
+    const role = getInitialRole();
+    const roleConfig = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS['HR Executive'];
+    const hash = window.location.hash.replace(/^#\/?/, '').trim();
+    if (VALID_TABS.includes(hash) && roleConfig.allowedTabs.includes(hash)) {
+      return hash;
+    }
+    const saved = localStorage.getItem('retentionai_active_tab');
+    if (saved && VALID_TABS.includes(saved) && roleConfig.allowedTabs.includes(saved)) {
+      return saved;
+    }
+    return roleConfig.defaultTab;
+  }
+  return 'dashboard';
 };
 
 const getInitialTheme = () => {
@@ -65,6 +107,9 @@ export default function App() {
   const [deptFilter, setDeptFilter] = useState('All');
   const [riskFilter, setRiskFilter] = useState('All');
 
+  const currentRoleConfig = ROLE_PERMISSIONS[activeRole] || ROLE_PERMISSIONS['HR Executive'];
+  const isTabAllowed = (tab) => currentRoleConfig.allowedTabs.includes(tab);
+
   const navigateTo = (tab, replace = false) => {
     setActiveTab(tab);
     setIsMobileMenuOpen(false);
@@ -80,6 +125,18 @@ export default function App() {
     }
   };
 
+  const handleRoleChange = (newRole) => {
+    setActiveRole(newRole);
+    localStorage.setItem('retentionai_active_role', newRole);
+    
+    const roleConfig = ROLE_PERMISSIONS[newRole] || ROLE_PERMISSIONS['HR Executive'];
+    if (!roleConfig.allowedTabs.includes(activeTab)) {
+      navigateTo(roleConfig.defaultTab);
+    }
+    showToast(`Switched RBAC perspective to ${roleConfig.name}`);
+    setIsMobileMenuOpen(false);
+  };
+
   // URL Hash & Browser History (Back / Forward Navigation to Dashboard)
   useEffect(() => {
     const currentTab = getInitialTab();
@@ -89,14 +146,17 @@ export default function App() {
 
     const handlePopState = () => {
       const hash = window.location.hash.replace(/^#\/?/, '').trim();
-      if (VALID_TABS.includes(hash)) {
+      const currentRole = localStorage.getItem('retentionai_active_role') || 'HR Executive';
+      const roleConfig = ROLE_PERMISSIONS[currentRole] || ROLE_PERMISSIONS['HR Executive'];
+
+      if (VALID_TABS.includes(hash) && roleConfig.allowedTabs.includes(hash)) {
         setActiveTab(hash);
         localStorage.setItem('retentionai_active_tab', hash);
       } else {
-        // When going back to root or empty, smoothly move to dashboard
-        setActiveTab('dashboard');
-        localStorage.setItem('retentionai_active_tab', 'dashboard');
-        window.history.replaceState({ tab: 'dashboard' }, '', '#/dashboard');
+        // Fallback to role's primary view
+        setActiveTab(roleConfig.defaultTab);
+        localStorage.setItem('retentionai_active_tab', roleConfig.defaultTab);
+        window.history.replaceState({ tab: roleConfig.defaultTab }, '', `#/${roleConfig.defaultTab}`);
       }
       setIsMobileMenuOpen(false);
       setIsModalOpen(false);
@@ -438,13 +498,7 @@ export default function App() {
           <select 
             className="role-select"
             value={activeRole}
-            onChange={(e) => {
-              const newRole = e.target.value;
-              setActiveRole(newRole);
-              localStorage.setItem('retentionai_active_role', newRole);
-              showToast(`Switched view to ${newRole}`);
-              setIsMobileMenuOpen(false);
-            }}
+            onChange={(e) => handleRoleChange(e.target.value)}
           >
             <option value="HR Executive">HR Executive / People Ops</option>
             <option value="Team Lead">Team Lead / Engineering Mgr</option>
@@ -452,84 +506,104 @@ export default function App() {
           </select>
         </div>
 
-        {/* Navigation Menu */}
+        {/* Navigation Menu (Filtered by RBAC Role) */}
         <nav className="nav-section">
-          <div className="nav-section-title">Workforce Intelligence</div>
+          <div className="nav-section-title">
+            {activeRole === 'Data Analyst' ? 'ML Intelligence & Diagnostics' : activeRole === 'Team Lead' ? 'Team Mitigation Ops' : 'Workforce Intelligence'}
+          </div>
           
-          <button 
-            className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => navigateTo('dashboard')}
-          >
-            <div className="nav-item-content">
-              <BarChart3 size={18} />
-              <span>Executive Dashboard</span>
-            </div>
-          </button>
+          {isTabAllowed('dashboard') && (
+            <button 
+              className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+              onClick={() => navigateTo('dashboard')}
+            >
+              <div className="nav-item-content">
+                <BarChart3 size={18} />
+                <span>Executive Dashboard</span>
+              </div>
+            </button>
+          )}
 
-          <button 
-            className={`nav-item ${activeTab === 'directory' ? 'active' : ''}`}
-            onClick={() => navigateTo('directory')}
-          >
-            <div className="nav-item-content">
-              <Users size={18} />
-              <span>Flight Risk Explorer</span>
-            </div>
-            <span className="nav-pill">{highRiskCount} Risk</span>
-          </button>
+          {isTabAllowed('directory') && (
+            <button 
+              className={`nav-item ${activeTab === 'directory' ? 'active' : ''}`}
+              onClick={() => navigateTo('directory')}
+            >
+              <div className="nav-item-content">
+                <Users size={18} />
+                <span>{activeRole === 'Team Lead' ? 'Team Risk Explorer' : activeRole === 'Data Analyst' ? 'Diagnostic Records' : 'Flight Risk Explorer'}</span>
+              </div>
+              <span className="nav-pill">{highRiskCount} Risk</span>
+            </button>
+          )}
 
-          <button 
-            className={`nav-item ${activeTab === 'departments' ? 'active' : ''}`}
-            onClick={() => navigateTo('departments')}
-          >
-            <div className="nav-item-content">
-              <Building2 size={18} />
-              <span>Department Radar</span>
-            </div>
-          </button>
+          {isTabAllowed('departments') && (
+            <button 
+              className={`nav-item ${activeTab === 'departments' ? 'active' : ''}`}
+              onClick={() => navigateTo('departments')}
+            >
+              <div className="nav-item-content">
+                <Building2 size={18} />
+                <span>Department Radar</span>
+              </div>
+            </button>
+          )}
 
-          <button 
-            className={`nav-item ${activeTab === 'simulator' ? 'active' : ''}`}
-            onClick={() => navigateTo('simulator')}
-          >
-            <div className="nav-item-content">
-              <Sliders size={18} />
-              <span>What-If Simulator</span>
-            </div>
-            <span className="nav-pill live">AI Live</span>
-          </button>
+          {isTabAllowed('simulator') && (
+            <button 
+              className={`nav-item ${activeTab === 'simulator' ? 'active' : ''}`}
+              onClick={() => navigateTo('simulator')}
+            >
+              <div className="nav-item-content">
+                <Sliders size={18} />
+                <span>What-If Simulator</span>
+              </div>
+              <span className="nav-pill live">AI Live</span>
+            </button>
+          )}
 
-          <div className="nav-section-title" style={{ marginTop: 14 }}>Strategy & Governance</div>
+          {(isTabAllowed('playbook') || isTabAllowed('interventions') || isTabAllowed('models')) && (
+            <div className="nav-section-title" style={{ marginTop: 14 }}>
+              {activeRole === 'Data Analyst' ? 'Model Governance' : 'Strategy & Action'}
+            </div>
+          )}
           
-          <button 
-            className={`nav-item ${activeTab === 'playbook' ? 'active' : ''}`}
-            onClick={() => navigateTo('playbook')}
-          >
-            <div className="nav-item-content">
-              <Lightbulb size={18} />
-              <span>Retention Playbook</span>
-            </div>
-          </button>
+          {isTabAllowed('playbook') && (
+            <button 
+              className={`nav-item ${activeTab === 'playbook' ? 'active' : ''}`}
+              onClick={() => navigateTo('playbook')}
+            >
+              <div className="nav-item-content">
+                <Lightbulb size={18} />
+                <span>Retention Playbook</span>
+              </div>
+            </button>
+          )}
 
-          <button 
-            className={`nav-item ${activeTab === 'interventions' ? 'active' : ''}`}
-            onClick={() => navigateTo('interventions')}
-          >
-            <div className="nav-item-content">
-              <CheckSquare size={18} />
-              <span>Intervention Tracker</span>
-            </div>
-            <span className="nav-pill live">{committedPlans.length} Active</span>
-          </button>
+          {isTabAllowed('interventions') && (
+            <button 
+              className={`nav-item ${activeTab === 'interventions' ? 'active' : ''}`}
+              onClick={() => navigateTo('interventions')}
+            >
+              <div className="nav-item-content">
+                <CheckSquare size={18} />
+                <span>{activeRole === 'Team Lead' ? 'Propose Retention Plan' : 'Intervention Tracker'}</span>
+              </div>
+              <span className="nav-pill live">{committedPlans.length} Active</span>
+            </button>
+          )}
 
-          <button 
-            className={`nav-item ${activeTab === 'models' ? 'active' : ''}`}
-            onClick={() => navigateTo('models')}
-          >
-            <div className="nav-item-content">
-              <Cpu size={18} />
-              <span>ML Model & Benchmarks</span>
-            </div>
-          </button>
+          {isTabAllowed('models') && (
+            <button 
+              className={`nav-item ${activeTab === 'models' ? 'active' : ''}`}
+              onClick={() => navigateTo('models')}
+            >
+              <div className="nav-item-content">
+                <Cpu size={18} />
+                <span>ML Model & Benchmarks</span>
+              </div>
+            </button>
+          )}
         </nav>
 
         {/* Sidebar Footer Status */}
@@ -556,9 +630,9 @@ export default function App() {
             <div className="header-left">
               <div className="breadcrumb-bar">
                 <span 
-                  onClick={() => navigateTo('dashboard')} 
+                  onClick={() => navigateTo(currentRoleConfig.defaultTab)} 
                   style={{ cursor: 'pointer', transition: 'color 0.2s' }}
-                  title="Go to Executive Dashboard"
+                  title="Go to Default View"
                 >
                   RetentionAI
                 </span>
@@ -567,21 +641,21 @@ export default function App() {
                 <ChevronRight size={12} />
                 <span className="active">
                   {activeTab === 'dashboard' && 'Executive Dashboard'}
-                  {activeTab === 'directory' && 'Flight Risk Explorer'}
+                  {activeTab === 'directory' && (activeRole === 'Team Lead' ? 'Team Risk Explorer' : activeRole === 'Data Analyst' ? 'Diagnostic Records' : 'Flight Risk Explorer')}
                   {activeTab === 'departments' && 'Department Intelligence'}
                   {activeTab === 'simulator' && 'What-If Simulation'}
                   {activeTab === 'playbook' && 'Retention Strategy Catalog'}
-                  {activeTab === 'interventions' && 'Intervention Tracker & ROI'}
-                  {activeTab === 'models' && 'ML Model Intelligence & Benchmarks'}
+                  {activeTab === 'interventions' && (activeRole === 'Team Lead' ? 'Propose Retention Plan' : 'Intervention Tracker & ROI')}
+                  {activeTab === 'models' && 'Champion ML Architecture & Benchmarks'}
                 </span>
               </div>
               <h2 className="page-title">
                 {activeTab === 'dashboard' && 'Workforce Attrition Overview'}
-                {activeTab === 'directory' && 'Employee Risk Explorer'}
+                {activeTab === 'directory' && (activeRole === 'Team Lead' ? 'Team Member Risk Assessment' : activeRole === 'Data Analyst' ? 'Model Test Sample Diagnostics' : 'Employee Risk Explorer')}
                 {activeTab === 'departments' && 'Departmental Risk Distribution'}
                 {activeTab === 'simulator' && 'AI What-If Retention Simulator'}
                 {activeTab === 'playbook' && 'Prescriptive Retention Playbook'}
-                {activeTab === 'interventions' && 'Mitigation Actions & ROI Log'}
+                {activeTab === 'interventions' && (activeRole === 'Team Lead' ? 'Submit Retention Interventions' : 'Mitigation Actions & ROI Log')}
                 {activeTab === 'models' && 'Champion ML Architecture & Benchmarks'}
               </h2>
             </div>
@@ -615,8 +689,8 @@ export default function App() {
                 className="user-avatar"
               />
               <div className="user-profile-details">
-                <div style={{ fontSize: '0.82rem', fontWeight: 700 }}>HR Administrator</div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{activeRole}</div>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700 }}>{currentRoleConfig.badge}</div>
+                <div style={{ fontSize: '0.72rem', color: '#818cf8', fontWeight: 600 }}>{activeRole}</div>
               </div>
             </div>
           </div>
@@ -624,6 +698,21 @@ export default function App() {
 
         {/* Content Views */}
         <div className="content-body">
+          {/* RBAC Role Context Banner */}
+          <div className="rbac-context-banner">
+            <div className="rbac-banner-left">
+              <div className="rbac-role-pill">
+                <span className="dot" style={{ width: 8, height: 8, borderRadius: '50%', background: '#6366f1' }}></span>
+                <span>Active RBAC Perspective: <strong>{activeRole}</strong> ({currentRoleConfig.badge})</span>
+              </div>
+              <p className="rbac-tagline">{currentRoleConfig.tagline}</p>
+            </div>
+            <div className="rbac-banner-right">
+              <span className="rbac-scope-tag">
+                {currentRoleConfig.allowedTabs.length} Modules Accessible
+              </span>
+            </div>
+          </div>
           
           {/* TAB 1: EXECUTIVE DASHBOARD */}
           {activeTab === 'dashboard' && (
@@ -862,16 +951,23 @@ export default function App() {
                   </select>
                 </div>
 
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button 
-                    className="btn-primary"
-                    onClick={() => {
-                      showToast('Exporting verified workforce retention dossier (CSV/PDF)...');
-                    }}
-                  >
-                    <FileText size={16} />
-                    Export Risk Dossier
-                  </button>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  {currentRoleConfig.canExportDossier ? (
+                    <button 
+                      className="btn-primary"
+                      onClick={() => {
+                        showToast('Exporting verified workforce retention dossier (CSV/PDF)...');
+                      }}
+                    >
+                      <FileText size={16} />
+                      Export Risk Dossier
+                    </button>
+                  ) : (
+                    <div className="rbac-scope-badge">
+                      <ShieldCheck size={14} color="#818cf8" />
+                      <span>{activeRole} Scoped View</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
