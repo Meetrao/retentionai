@@ -22,20 +22,103 @@ import './App.css';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
+const VALID_TABS = ['dashboard', 'directory', 'departments', 'simulator', 'playbook', 'interventions', 'models'];
+
+const getInitialTab = () => {
+  if (typeof window !== 'undefined') {
+    const hash = window.location.hash.replace(/^#\/?/, '').trim();
+    if (VALID_TABS.includes(hash)) {
+      return hash;
+    }
+    const saved = localStorage.getItem('retentionai_active_tab');
+    if (saved && VALID_TABS.includes(saved)) {
+      return saved;
+    }
+  }
+  return 'dashboard';
+};
+
+const getInitialRole = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('retentionai_active_role') || 'HR Executive';
+  }
+  return 'HR Executive';
+};
+
+const getInitialTheme = () => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('retentionai_theme');
+    if (saved !== null) {
+      return saved === 'dark';
+    }
+  }
+  return true;
+};
+
 export default function App() {
-  // Navigation & Theme State
-  const [activeRole, setActiveRole] = useState('HR Executive');
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  // Navigation & Theme State with Persistence
+  const [activeRole, setActiveRole] = useState(getInitialRole);
+  const [activeTab, setActiveTab] = useState(getInitialTab);
+  const [isDarkMode, setIsDarkMode] = useState(getInitialTheme);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
   const [riskFilter, setRiskFilter] = useState('All');
 
-  const navigateTo = (tab) => {
+  const navigateTo = (tab, replace = false) => {
     setActiveTab(tab);
     setIsMobileMenuOpen(false);
+    localStorage.setItem('retentionai_active_tab', tab);
+    
+    const targetHash = `#/${tab}`;
+    if (window.location.hash !== targetHash) {
+      if (replace) {
+        window.history.replaceState({ tab }, '', targetHash);
+      } else {
+        window.history.pushState({ tab }, '', targetHash);
+      }
+    }
   };
+
+  // URL Hash & Browser History (Back / Forward Navigation to Dashboard)
+  useEffect(() => {
+    const currentTab = getInitialTab();
+    if (window.location.hash !== `#/${currentTab}`) {
+      window.history.replaceState({ tab: currentTab }, '', `#/${currentTab}`);
+    }
+
+    const handlePopState = () => {
+      const hash = window.location.hash.replace(/^#\/?/, '').trim();
+      if (VALID_TABS.includes(hash)) {
+        setActiveTab(hash);
+        localStorage.setItem('retentionai_active_tab', hash);
+      } else {
+        // When going back to root or empty, smoothly move to dashboard
+        setActiveTab('dashboard');
+        localStorage.setItem('retentionai_active_tab', 'dashboard');
+        window.history.replaceState({ tab: 'dashboard' }, '', '#/dashboard');
+      }
+      setIsMobileMenuOpen(false);
+      setIsModalOpen(false);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handlePopState);
+    };
+  }, []);
+
+  // Theme synchronization effect
+  useEffect(() => {
+    if (!isDarkMode) {
+      document.documentElement.classList.add('light-theme');
+    } else {
+      document.documentElement.classList.remove('light-theme');
+    }
+  }, [isDarkMode]);
 
   // Live Backend State
   const [employees, setEmployees] = useState(INITIAL_EMPLOYEES);
@@ -178,12 +261,9 @@ export default function App() {
 
   // Toggle Theme
   const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-    if (isDarkMode) {
-      document.documentElement.classList.add('light-theme');
-    } else {
-      document.documentElement.classList.remove('light-theme');
-    }
+    const newDark = !isDarkMode;
+    setIsDarkMode(newDark);
+    localStorage.setItem('retentionai_theme', newDark ? 'dark' : 'light');
   };
 
   // Filtered employees for directory
@@ -327,7 +407,11 @@ export default function App() {
       {/* Sidebar Navigation */}
       <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="brand-wrapper">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div 
+            style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
+            onClick={() => navigateTo('dashboard')}
+            title="Go to Executive Dashboard"
+          >
             <div className="brand-icon-box">
               <Cpu size={22} />
             </div>
@@ -355,8 +439,10 @@ export default function App() {
             className="role-select"
             value={activeRole}
             onChange={(e) => {
-              setActiveRole(e.target.value);
-              showToast(`Switched view to ${e.target.value}`);
+              const newRole = e.target.value;
+              setActiveRole(newRole);
+              localStorage.setItem('retentionai_active_role', newRole);
+              showToast(`Switched view to ${newRole}`);
               setIsMobileMenuOpen(false);
             }}
           >
@@ -469,7 +555,13 @@ export default function App() {
             </button>
             <div className="header-left">
               <div className="breadcrumb-bar">
-                <span>RetentionAI</span>
+                <span 
+                  onClick={() => navigateTo('dashboard')} 
+                  style={{ cursor: 'pointer', transition: 'color 0.2s' }}
+                  title="Go to Executive Dashboard"
+                >
+                  RetentionAI
+                </span>
                 <ChevronRight size={12} />
                 <span className="breadcrumb-role">{activeRole}</span>
                 <ChevronRight size={12} />
@@ -613,7 +705,7 @@ export default function App() {
                     <button 
                       className="btn-secondary" 
                       style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                      onClick={() => setActiveTab('departments')}
+                      onClick={() => navigateTo('departments')}
                     >
                       Deep Dive &rarr;
                     </button>
@@ -703,7 +795,7 @@ export default function App() {
                       style={{ padding: '4px 10px', fontSize: '0.75rem' }} 
                       onClick={() => {
                         setRiskFilter('Critical');
-                        setActiveTab('directory');
+                        navigateTo('directory');
                       }}
                     >
                       View All ({highRiskCount})
@@ -841,7 +933,7 @@ export default function App() {
                               style={{ padding: '6px 10px', fontSize: '0.78rem' }}
                               onClick={() => {
                                 setSimTargetEmp(emp);
-                                setActiveTab('simulator');
+                                navigateTo('simulator');
                               }}
                             >
                               <Sliders size={14} /> Simulate
@@ -903,7 +995,7 @@ export default function App() {
                       style={{ justifyContent: 'center' }}
                       onClick={() => {
                         setDeptFilter(d.department);
-                        setActiveTab('directory');
+                        navigateTo('directory');
                       }}
                     >
                       Filter {d.department} Team &rarr;
@@ -1178,7 +1270,7 @@ export default function App() {
                 </div>
                 <button 
                   className="btn-primary"
-                  onClick={() => setActiveTab('simulator')}
+                  onClick={() => navigateTo('simulator')}
                 >
                   <Sliders size={16} /> New Simulation
                 </button>
