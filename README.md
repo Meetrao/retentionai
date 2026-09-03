@@ -148,10 +148,8 @@ This project is licensed under the **MIT License** – see `LICENSE` for details
 ---
 
 ## 📞 Contact & Acknowledgements
-- **Lead Architect**: Antigravity AI (the assistant you’re interacting with)
 - **Repository**: <https://github.com/Meetrao/retentionai>
 - **Demo**: Run the app locally and visit `http://127.0.0.1:5173`.
 
 ---
 
-*Prepared for judging panels and developers alike – concise, yet comprehensive, with clear technical depth and user‑facing description.*
