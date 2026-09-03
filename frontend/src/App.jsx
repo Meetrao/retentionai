@@ -48,10 +48,10 @@ export default function App() {
   const [committedPlans, setCommittedPlans] = useState([
     {
       id: "INT-101",
-      empId: "EMP-1082",
+      empId: "EMP-1",
       name: "Aarav Sharma",
-      department: "Engineering",
-      role: "Senior Fullstack Engineer",
+      department: "Sales",
+      role: "Sales Executive",
       action: "Base Salary Calibration (+12%) & On-Call Cap",
       costInr: 342000,
       riskBefore: 88,
@@ -61,11 +61,11 @@ export default function App() {
     },
     {
       id: "INT-102",
-      empId: "EMP-1045",
+      empId: "EMP-4",
       name: "Rohan Verma",
-      department: "Product",
-      role: "Lead Product Designer",
-      action: "Fast-Track Lead Promotion & 3 Days WFH",
+      department: "Research & Development",
+      role: "Laboratory Technician",
+      action: "Fast-Track Promotion Milestone & Workload Balancing",
       costInr: 150000,
       riskBefore: 76,
       riskAfter: 35,
@@ -107,7 +107,7 @@ export default function App() {
         const [kpiRes, deptRes, empRes, metRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/kpis`).then(r => r.ok ? r.json() : null),
           fetch(`${API_BASE_URL}/api/departments`).then(r => r.ok ? r.json() : null),
-          fetch(`${API_BASE_URL}/api/employees?limit=60`).then(r => r.ok ? r.json() : null),
+          fetch(`${API_BASE_URL}/api/employees?limit=1470`).then(r => r.ok ? r.json() : null),
           fetch(`${API_BASE_URL}/api/model/metrics`).then(r => r.ok ? r.json() : null),
         ]);
 

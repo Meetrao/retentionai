@@ -150,11 +150,12 @@ def init_service():
             monthly_income_usd = row.get('MonthlyIncome', 5000)
             annual_ctc_inr = int(monthly_income_usd * 12 * 40) # benchmark scaling
             
+            emp_num = row.get('EmployeeNumber', 1000 + i)
             scored_list.append({
-                "id": f"EMP-{1000 + i}",
+                "id": f"EMP-{emp_num}",
                 "name": full_name,
                 "role": row.get('JobRole', 'Specialist'),
-                "department": row.get('Department', 'Engineering'),
+                "department": row.get('Department', 'Research & Development'),
                 "avatar": avatar,
                 "tenureYears": float(row.get('YearsAtCompany', 2)),
                 "salary": annual_ctc_inr,
@@ -166,7 +167,7 @@ def init_service():
                 "riskScore": score_pct,
                 "riskTier": tier,
                 "primaryDrivers": drivers[:3],
-                "notes": f"Employee in {row.get('Department')}. Total career experience: {row.get('TotalWorkingYears', 5)} years.",
+                "notes": f"Employee in {row.get('Department')}. Total career experience: {row.get('TotalWorkingYears', 5)} years, Job Level {row.get('JobLevel', 1)}.",
                 "status": "Under Active Review" if tier in ["Critical", "High"] else "Stable"
             })
             
@@ -251,7 +252,7 @@ def get_employees(
     department: Optional[str] = None,
     riskTier: Optional[str] = None,
     search: Optional[str] = None,
-    limit: int = Query(50, ge=1, le=1470)
+    limit: int = Query(1470, ge=1, le=1470)
 ):
     """Returns scored employee directory with search and filtering."""
     results = cached_scored_employees
