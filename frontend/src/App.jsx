@@ -587,18 +587,68 @@ export default function App() {
                   <div style={{ height: 300, width: '100%' }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={departmentData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                        <XAxis dataKey="department" stroke="#64748b" fontSize={11} tickLine={false} />
-                        <YAxis stroke="#64748b" fontSize={12} tickLine={false} unit="%" />
+                        <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)"} />
+                        <XAxis dataKey="department" stroke={isDarkMode ? "#64748b" : "#64748b"} fontSize={11} tickLine={false} />
+                        <YAxis stroke={isDarkMode ? "#64748b" : "#64748b"} fontSize={12} tickLine={false} unit="%" />
                         <Tooltip 
-                          contentStyle={{ backgroundColor: '#0d1322', borderColor: 'rgba(255,255,255,0.1)', borderRadius: 10 }}
-                          formatter={(val) => [`${val}%`, 'Avg Risk']}
+                          cursor={{ fill: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(99, 102, 241, 0.08)', radius: 6 }}
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              const riskColor = data.avgRisk > 30 ? '#f43f5e' : data.avgRisk > 20 ? '#f59e0b' : '#10b981';
+                              return (
+                                <div style={{
+                                  backgroundColor: isDarkMode ? '#0d1322' : '#ffffff',
+                                  border: isDarkMode ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.08)',
+                                  borderRadius: 12,
+                                  padding: '12px 16px',
+                                  boxShadow: isDarkMode 
+                                    ? '0 12px 30px rgba(0,0,0,0.6)' 
+                                    : '0 10px 25px -5px rgba(0,0,0,0.12), 0 8px 10px -6px rgba(0,0,0,0.08)',
+                                  minWidth: 200,
+                                  color: isDarkMode ? '#f1f5f9' : '#0f172a'
+                                }}>
+                                  <div style={{ 
+                                    fontWeight: 700, 
+                                    fontSize: '0.9rem', 
+                                    marginBottom: 8,
+                                    color: isDarkMode ? '#f8fafc' : '#0f172a',
+                                    borderBottom: isDarkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)',
+                                    paddingBottom: 6
+                                  }}>
+                                    {data.department}
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+                                    <span style={{ fontSize: '0.78rem', color: isDarkMode ? '#94a3b8' : '#64748b' }}>Avg Flight Risk:</span>
+                                    <span style={{ fontWeight: 800, fontSize: '0.88rem', color: riskColor }}>
+                                      {data.avgRisk}%
+                                    </span>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                                    <span style={{ fontSize: '0.78rem', color: isDarkMode ? '#94a3b8' : '#64748b' }}>High-Risk Headcount:</span>
+                                    <span style={{ 
+                                      fontWeight: 700, 
+                                      fontSize: '0.8rem', 
+                                      color: data.highRiskCount > 0 ? (isDarkMode ? '#fb7185' : '#e11d48') : (isDarkMode ? '#34d399' : '#059669'),
+                                      background: isDarkMode ? 'rgba(244, 63, 94, 0.12)' : 'rgba(244, 63, 94, 0.08)',
+                                      padding: '2px 8px',
+                                      borderRadius: 6
+                                    }}>
+                                      {data.highRiskCount} {data.headCount ? `/ ${data.headCount}` : ''}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
                         />
                         <Bar dataKey="avgRisk" radius={[6, 6, 0, 0]}>
                           {departmentData.map((entry, index) => (
                             <Cell 
                               key={`cell-${index}`} 
                               fill={entry.avgRisk > 30 ? '#f43f5e' : entry.avgRisk > 20 ? '#f59e0b' : '#10b981'} 
+                              className="department-bar-cell"
                             />
                           ))}
                         </Bar>
@@ -1238,11 +1288,20 @@ export default function App() {
                         layout="vertical"
                         margin={{ top: 5, right: 20, left: 70, bottom: 5 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                        <XAxis type="number" stroke="#64748b" fontSize={11} domain={[0, 0.1]} />
-                        <YAxis dataKey="feature" type="category" stroke="#94a3b8" fontSize={11} width={130} />
+                        <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)"} />
+                        <XAxis type="number" stroke={isDarkMode ? "#64748b" : "#64748b"} fontSize={11} domain={[0, 0.1]} />
+                        <YAxis dataKey="feature" type="category" stroke={isDarkMode ? "#94a3b8" : "#475569"} fontSize={11} width={130} />
                         <Tooltip 
-                          contentStyle={{ backgroundColor: '#0d1322', borderColor: 'rgba(255,255,255,0.1)', borderRadius: 10 }}
+                          cursor={{ fill: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(99, 102, 241, 0.08)', radius: 4 }}
+                          contentStyle={{ 
+                            backgroundColor: isDarkMode ? '#0d1322' : '#ffffff', 
+                            borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)', 
+                            borderRadius: 10,
+                            boxShadow: isDarkMode ? '0 10px 25px rgba(0,0,0,0.5)' : '0 10px 25px -5px rgba(0,0,0,0.12)',
+                            color: isDarkMode ? '#f1f5f9' : '#0f172a'
+                          }}
+                          itemStyle={{ color: isDarkMode ? '#f1f5f9' : '#0f172a', fontWeight: 600 }}
+                          labelStyle={{ color: isDarkMode ? '#94a3b8' : '#475569', fontWeight: 600, marginBottom: 4 }}
                           formatter={(val) => [(val * 100).toFixed(1) + '%', 'Relative Weight']}
                         />
                         <Bar dataKey="importance" fill="#6366f1" radius={[0, 6, 6, 0]}>
