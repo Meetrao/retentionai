@@ -462,16 +462,52 @@ export default function App() {
     fetchMatrixData(matrixDeptFilter);
   }, [matrixDeptFilter]);
 
+  // Notification & Risk Anomaly Alert State
+  const [alertsData, setAlertsData] = useState([]);
+  const [isAlertsOpen, setIsAlertsOpen] = useState(false);
+  const [alertCategory, setAlertCategory] = useState('All');
+  const alertsDropdownRef = useRef(null);
+
+  const unreadAlertsCount = useMemo(() => {
+    return alertsData.filter(a => !a.read).length;
+  }, [alertsData]);
+
+  // Click outside to close notifications dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (alertsDropdownRef.current && !alertsDropdownRef.current.contains(e.target)) {
+        setIsAlertsOpen(false);
+      }
+    };
+    if (isAlertsOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isAlertsOpen]);
+
+  const handleMarkAllAlertsRead = () => {
+    setAlertsData(prev => prev.map(a => ({ ...a, read: true })));
+    showToast('All risk alerts marked as acknowledged');
+  };
+
+  const handleDismissAlert = (id, e) => {
+    e.stopPropagation();
+    setAlertsData(prev => prev.filter(a => a.id !== id));
+  };
+
   // Fetch Live Data from Backend on Load
   useEffect(() => {
     const fetchLiveData = async () => {
       try {
-        const [kpiRes, deptRes, empRes, metRes, matRes] = await Promise.all([
+        const [kpiRes, deptRes, empRes, metRes, matRes, alertsRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/kpis`).then(r => r.ok ? r.json() : null),
           fetch(`${API_BASE_URL}/api/departments`).then(r => r.ok ? r.json() : null),
           fetch(`${API_BASE_URL}/api/employees?limit=1470`).then(r => r.ok ? r.json() : null),
           fetch(`${API_BASE_URL}/api/model/metrics`).then(r => r.ok ? r.json() : null),
           fetch(`${API_BASE_URL}/api/matrix`).then(r => r.ok ? r.json() : null),
+          fetch(`${API_BASE_URL}/api/alerts`).then(r => r.ok ? r.json() : null),
         ]);
 
         if (kpiRes) {
@@ -480,6 +516,9 @@ export default function App() {
         }
         if (matRes) {
           setMatrixData(matRes);
+        }
+        if (alertsRes && alertsRes.alerts) {
+          setAlertsData(alertsRes.alerts);
         }
         if (deptRes && deptRes.length > 0) {
           setDepartmentData(deptRes);
@@ -935,13 +974,175 @@ export default function App() {
             <button className="icon-btn" onClick={toggleTheme} title="Toggle Dark/Light Mode">
               {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <button className="icon-btn" onClick={() => {
-              setRiskFilter('Critical');
-              navigateTo('directory');
-              showToast('Filtered directory by Critical Risk alerts');
-            }}>
-              <Bell size={18} />
-            </button>
+            {/* Live Notification & Risk Anomaly Dropdown */}
+            <div className="notif-center-wrapper" ref={alertsDropdownRef}>
+              <button 
+                className={`icon-btn notif-bell-btn ${isAlertsOpen ? 'active' : ''}`}
+                onClick={() => setIsAlertsOpen(!isAlertsOpen)}
+                title="Workforce Risk Anomaly Alerts"
+                aria-label="Notifications"
+              >
+                <Bell size={18} />
+                {unreadAlertsCount > 0 && (
+                  <span className="notif-badge">
+                    <span className="notif-ping"></span>
+                    {unreadAlertsCount}
+                  </span>
+                )}
+              </button>
+
+              {isAlertsOpen && (
+                <div className="notif-dropdown-menu">
+                  <div className="notif-dropdown-header">
+                    <div className="notif-header-title">
+                      <Bell size={16} color="#6366f1" />
+                      <h4>Risk Anomaly Center</h4>
+                      {unreadAlertsCount > 0 && (
+                        <span className="notif-count-pill">{unreadAlertsCount} Unread</span>
+                      )}
+                    </div>
+                    {unreadAlertsCount > 0 && (
+                      <button className="notif-mark-read-btn" onClick={handleMarkAllAlertsRead}>
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Category Filter Chips */}
+                  <div className="notif-categories-bar">
+                    {['All', 'Flight Risk', 'Burnout', 'Compensation', 'Stagnation', 'Milestones'].map((cat) => (
+                      <button
+                        key={cat}
+                        className={`notif-category-chip ${alertCategory === cat ? 'active' : ''}`}
+                        onClick={() => setAlertCategory(cat)}
+                      >
+                        {cat === 'Flight Risk' ? '🚨 Flight' : cat === 'Burnout' ? '🔥 Burnout' : cat === 'Compensation' ? '💸 Comp' : cat === 'Stagnation' ? '⏳ Stagnation' : cat === 'Milestones' ? '✅ Milestones' : 'All'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Alerts List */}
+                  <div className="notif-feed-container">
+                    {alertsData.filter(a => alertCategory === 'All' || a.category === alertCategory).length === 0 ? (
+                      <div className="notif-empty-state">
+                        <CheckCircle2 size={28} color="#10b981" />
+                        <p>No active anomalies in this category.</p>
+                      </div>
+                    ) : (
+                      alertsData.filter(a => alertCategory === 'All' || a.category === alertCategory).map((alert) => (
+                        <div 
+                          key={alert.id}
+                          className={`notif-card ${alert.severity} ${alert.read ? 'read' : 'unread'}`}
+                        >
+                          <div className="notif-card-top">
+                            <div className="notif-badge-group">
+                              <span className={`notif-sev-tag ${alert.severity}`}>
+                                {alert.category}
+                              </span>
+                              {alert.department && (
+                                <span className="notif-dept-tag">{alert.department}</span>
+                              )}
+                            </div>
+                            <div className="notif-meta-right">
+                              <span className="notif-time">{alert.timestamp}</span>
+                              <button 
+                                className="notif-dismiss-btn"
+                                onClick={(e) => handleDismissAlert(alert.id, e)}
+                                title="Dismiss notification"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          </div>
+
+                          <h5 className="notif-title">{alert.title}</h5>
+                          <p className="notif-msg">{alert.message}</p>
+
+                          {/* Action Triggers */}
+                          <div className="notif-actions-row">
+                            {alert.employeeId ? (
+                              <>
+                                <button 
+                                  className="notif-action-btn primary"
+                                  onClick={() => {
+                                    const emp = employees.find(e => e.id === alert.employeeId);
+                                    if (emp) {
+                                      setSelectedEmployee(emp);
+                                      setIsModalOpen(true);
+                                      setIsAlertsOpen(false);
+                                    }
+                                  }}
+                                >
+                                  <UserCheck size={12} />
+                                  <span>View Dossier</span>
+                                </button>
+                                <button 
+                                  className="notif-action-btn copilot"
+                                  onClick={() => {
+                                    const emp = employees.find(e => e.id === alert.employeeId);
+                                    setIsAlertsOpen(false);
+                                    if (emp) {
+                                      askCopilotAboutEmployee(emp);
+                                    } else {
+                                      setIsCopilotOpen(true);
+                                      handleSendCopilot(`Diagnose anomaly for ${alert.title}`);
+                                    }
+                                  }}
+                                >
+                                  <Sparkles size={12} />
+                                  <span>Ask Copilot</span>
+                                </button>
+                                <button 
+                                  className="notif-action-btn simulate"
+                                  onClick={() => {
+                                    const emp = employees.find(e => e.id === alert.employeeId);
+                                    setIsAlertsOpen(false);
+                                    if (emp) setSimTargetEmp(emp);
+                                    navigateTo('simulator');
+                                  }}
+                                >
+                                  <Sliders size={12} />
+                                  <span>Simulate</span>
+                                </button>
+                              </>
+                            ) : alert.department ? (
+                              <>
+                                <button 
+                                  className="notif-action-btn primary"
+                                  onClick={() => {
+                                    setDeptFilter(alert.department);
+                                    navigateTo('directory');
+                                    setIsAlertsOpen(false);
+                                  }}
+                                >
+                                  <Building2 size={12} />
+                                  <span>Filter {alert.department}</span>
+                                </button>
+                                <button 
+                                  className="notif-action-btn copilot"
+                                  onClick={() => {
+                                    setIsAlertsOpen(false);
+                                    setIsCopilotOpen(true);
+                                    handleSendCopilot(`Why is ${alert.department} experiencing high burnout?`);
+                                  }}
+                                >
+                                  <Sparkles size={12} />
+                                  <span>Diagnose in Copilot</span>
+                                </button>
+                              </>
+                            ) : null}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="notif-dropdown-footer">
+                    <span>Active Telemetry • 1,470 Records Scanned</span>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="user-profile-badge">
               <div className="user-avatar-emoji">
                 {activeRole === 'HR Executive' ? <Briefcase size={16} /> : activeRole === 'Team Lead' ? <Users size={16} /> : <Cpu size={16} />}
