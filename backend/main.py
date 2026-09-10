@@ -244,7 +244,179 @@ def get_department_breakdown():
             "avgSalary": int(data["totalSalary"] / count),
             "attritionForecast": f"{avg_risk}%"
         })
-    return res
+@app.get("/api/matrix")
+def get_talent_matrix(department: Optional[str] = None):
+    """
+    Computes the 9-Box Talent Retention Matrix:
+    Cross-classifies workforce across Performance Rating vs Attrition Flight Risk.
+    """
+    if not cached_scored_employees:
+        raise HTTPException(status_code=503, detail="Employee dataset not loaded yet")
+
+    emps = cached_scored_employees
+    if department and department != "All":
+        emps = [e for e in emps if e['department'].lower() == department.lower()]
+
+    total = len(emps)
+    if total == 0:
+        return {"department": department or "All", "totalHeadcount": 0, "urgentHeadcount": 0, "totalCostAtRisk": 0, "totalCostFormatted": "₹0 Cr", "quadrants": []}
+
+    def get_perf_tier(e):
+        if e['performanceRating'] >= 4 or (e['performanceRating'] >= 3 and e['satisfactionScore'] >= 7.5):
+            return 'High', 'Outstanding / High Potential'
+        elif e['satisfactionScore'] >= 5.0:
+            return 'Medium', 'Solid Contributor'
+        else:
+            return 'Low', 'Developing / Disengaged'
+
+    def get_risk_bucket(e):
+        if e['riskTier'] in ['Critical', 'High']:
+            return 'High', 'Critical / High Risk'
+        elif e['riskTier'] == 'Medium':
+            return 'Medium', 'Medium Flight Risk'
+        else:
+            return 'Low', 'Low Risk / Retained'
+
+    QUAD_CONFIG = {
+        ("High", "High"): {
+            "id": "high_perf_high_risk",
+            "row": 0, "col": 2,
+            "title": "⭐ Critical Stars at Risk",
+            "tagline": "Top Performers with Urgent Flight Probability",
+            "priority": "Urgent Priority",
+            "badgeColor": "critical",
+            "strategy": "Immediate compensation calibration (+12%), overtime guardrails, and executive sponsor 1-on-1 check-in."
+        },
+        ("High", "Medium"): {
+            "id": "high_perf_med_risk",
+            "row": 0, "col": 1,
+            "title": "🚀 High Potentials Under Strain",
+            "tagline": "Star Contributors Showing Early Burnout Indicators",
+            "priority": "High Priority",
+            "badgeColor": "warning",
+            "strategy": "Workload rebalancing, flexible remote schedule, and fast-track promotion timeline alignment."
+        },
+        ("High", "Low"): {
+            "id": "high_perf_low_risk",
+            "row": 0, "col": 0,
+            "title": "💎 Star Anchors",
+            "tagline": "High Performing, Highly Engaged Core Pillars",
+            "priority": "Benchmark Cohort",
+            "badgeColor": "success",
+            "strategy": "Continuous recognition, leadership development tracks, and mentorship role assignments."
+        },
+        ("Medium", "High"): {
+            "id": "med_perf_high_risk",
+            "row": 1, "col": 2,
+            "title": "⚡ Solid Contributors at Risk",
+            "tagline": "Consistent Performers with Flight Risk",
+            "priority": "Elevated",
+            "badgeColor": "high",
+            "strategy": "1-on-1 career trajectory review, market pay parity check, and recognition incentives."
+        },
+        ("Medium", "Medium"): {
+            "id": "med_perf_med_risk",
+            "row": 1, "col": 1,
+            "title": "🛡️ Core Steady Workforce",
+            "tagline": "Reliable Backbone with Moderate Vulnerability",
+            "priority": "Stable Monitoring",
+            "badgeColor": "medium",
+            "strategy": "Skill-building opportunities, quarterly recognition, and transparent promotion pathways."
+        },
+        ("Medium", "Low"): {
+            "id": "med_perf_low_risk",
+            "row": 1, "col": 0,
+            "title": "🌱 Solid Foundation",
+            "tagline": "Dependable Contributors with High Loyalty",
+            "priority": "Healthy",
+            "badgeColor": "normal",
+            "strategy": "Retain via competitive benefits, steady career progression, and positive team culture."
+        },
+        ("Low", "High"): {
+            "id": "low_perf_high_risk",
+            "row": 2, "col": 2,
+            "title": "⚠️ Low Engagement Flight Risks",
+            "tagline": "Underperforming Personnel Actively Disengaging",
+            "priority": "Action Required",
+            "badgeColor": "critical",
+            "strategy": "Role realignment, targeted performance improvement plan (PIP), or structured transition."
+        },
+        ("Low", "Medium"): {
+            "id": "low_perf_med_risk",
+            "row": 2, "col": 1,
+            "title": "📉 Disengaged Talent Cohort",
+            "tagline": "Developing Contributors Needing Guidance",
+            "priority": "Coaching",
+            "badgeColor": "warning",
+            "strategy": "Manager check-in to diagnose root blockers, training programs, and clear KPI realignment."
+        },
+        ("Low", "Low"): {
+            "id": "low_perf_low_risk",
+            "row": 2, "col": 0,
+            "title": "🎯 Stable Developing Personnel",
+            "tagline": "Loyal Employees Needing Capability Building",
+            "priority": "Development",
+            "badgeColor": "normal",
+            "strategy": "Structured upskilling, mentorship pairing, and milestone-based coaching."
+        },
+    }
+
+    quad_buckets = {}
+    for (p, r), cfg in QUAD_CONFIG.items():
+        quad_buckets[(p, r)] = []
+
+    for e in emps:
+        p_tier, _ = get_perf_tier(e)
+        r_tier, _ = get_risk_bucket(e)
+        quad_buckets[(p_tier, r_tier)].append(e)
+
+    quadrants = []
+    total_cost_at_risk = 0
+    urgent_headcount = 0
+
+    for (p, r), cfg in QUAD_CONFIG.items():
+        q_emps = quad_buckets[(p, r)]
+        q_count = len(q_emps)
+        q_pct = round((q_count / total) * 100, 1) if total > 0 else 0
+        q_cost = sum(int(e['salary'] * 1.5 * (e['riskScore'] / 100.0)) for e in q_emps)
+        q_avg_risk = round(sum(e['riskScore'] for e in q_emps) / q_count, 1) if q_count > 0 else 0
+        
+        if r == "High":
+            total_cost_at_risk += q_cost
+        if cfg["id"] == "high_perf_high_risk":
+            urgent_headcount = q_count
+
+        q_emps_sorted = sorted(q_emps, key=lambda x: x['riskScore'], reverse=True)
+
+        quadrants.append({
+            "id": cfg["id"],
+            "row": cfg["row"],
+            "col": cfg["col"],
+            "performance": p,
+            "risk": r,
+            "title": cfg["title"],
+            "tagline": cfg["tagline"],
+            "priority": cfg["priority"],
+            "badgeColor": cfg["badgeColor"],
+            "strategy": cfg["strategy"],
+            "count": q_count,
+            "percentage": q_pct,
+            "costAtRisk": q_cost,
+            "costFormatted": f"₹{(q_cost / 10000000.0):.2f} Cr" if q_cost >= 10000000 else f"₹{(q_cost / 100000.0):.1f} Lakhs",
+            "avgRiskScore": q_avg_risk,
+            "employees": q_emps_sorted
+        })
+
+    quadrants.sort(key=lambda x: (x["row"], x["col"]))
+
+    return {
+        "department": department or "All",
+        "totalHeadcount": total,
+        "urgentHeadcount": urgent_headcount,
+        "totalCostAtRisk": total_cost_at_risk,
+        "totalCostFormatted": f"₹{(total_cost_at_risk / 10000000.0):.2f} Cr",
+        "quadrants": quadrants
+    }
 
 
 @app.get("/api/employees")

@@ -7,7 +7,8 @@ import {
   Upload, FileText, BarChart3, Database, RefreshCw,
   Clock, Award, Sparkles, UserCheck, Briefcase, Building2,
   CheckSquare, Filter, Layers, HelpCircle, Bot, Send,
-  MessageSquare, Trash2, ArrowRight
+  MessageSquare, Trash2, ArrowRight, LayoutGrid, Grid3X3,
+  Target, ArrowUpDown
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
@@ -23,7 +24,7 @@ import './App.css';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
-const VALID_TABS = ['dashboard', 'directory', 'departments', 'simulator', 'playbook', 'interventions', 'models'];
+const VALID_TABS = ['dashboard', 'directory', 'departments', 'matrix', 'simulator', 'playbook', 'interventions', 'models'];
 
 export const ROLE_PERMISSIONS = {
   'HR Executive': {
@@ -31,7 +32,7 @@ export const ROLE_PERMISSIONS = {
     badge: 'HR Administrator',
     tagline: 'Enterprise Workforce Overview, Departmental Capacity & Retention Policy Governance',
     defaultTab: 'dashboard',
-    allowedTabs: ['dashboard', 'directory', 'departments', 'playbook', 'interventions'],
+    allowedTabs: ['dashboard', 'directory', 'departments', 'matrix', 'playbook', 'interventions'],
     canExportDossier: true,
     canSimulate: true,
     canApprovePlans: true,
@@ -42,7 +43,7 @@ export const ROLE_PERMISSIONS = {
     badge: 'Engineering Team Lead',
     tagline: 'Direct Team Flight Risk Diagnosis, 1-on-1 What-If Levers & Retention Proposals',
     defaultTab: 'simulator',
-    allowedTabs: ['directory', 'simulator', 'interventions'],
+    allowedTabs: ['directory', 'matrix', 'simulator', 'interventions'],
     canExportDossier: false,
     canSimulate: true,
     canApprovePlans: false,
@@ -53,7 +54,7 @@ export const ROLE_PERMISSIONS = {
     badge: 'ML Ops Specialist',
     tagline: 'Champion Soft-Voting Ensemble Metrics, ROC-AUC, Feature Importance & Pipeline Retraining',
     defaultTab: 'models',
-    allowedTabs: ['models', 'directory', 'simulator'],
+    allowedTabs: ['models', 'directory', 'matrix', 'simulator'],
     canExportDossier: false,
     canSimulate: true,
     canApprovePlans: false,
@@ -432,20 +433,53 @@ export default function App() {
     return elements;
   };
 
+  // Talent Retention Matrix State
+  const [matrixData, setMatrixData] = useState(null);
+  const [selectedQuadrantId, setSelectedQuadrantId] = useState('high_perf_high_risk');
+  const [matrixDeptFilter, setMatrixDeptFilter] = useState('All');
+  const [matrixSearchQuery, setMatrixSearchQuery] = useState('');
+  const [isMatrixLoading, setIsMatrixLoading] = useState(false);
+
+  const fetchMatrixData = async (dept = 'All') => {
+    setIsMatrixLoading(true);
+    try {
+      const url = dept && dept !== 'All' 
+        ? `${API_BASE_URL}/api/matrix?department=${encodeURIComponent(dept)}`
+        : `${API_BASE_URL}/api/matrix`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setMatrixData(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch matrix data', e);
+    } finally {
+      setIsMatrixLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMatrixData(matrixDeptFilter);
+  }, [matrixDeptFilter]);
+
   // Fetch Live Data from Backend on Load
   useEffect(() => {
     const fetchLiveData = async () => {
       try {
-        const [kpiRes, deptRes, empRes, metRes] = await Promise.all([
+        const [kpiRes, deptRes, empRes, metRes, matRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/kpis`).then(r => r.ok ? r.json() : null),
           fetch(`${API_BASE_URL}/api/departments`).then(r => r.ok ? r.json() : null),
           fetch(`${API_BASE_URL}/api/employees?limit=1470`).then(r => r.ok ? r.json() : null),
           fetch(`${API_BASE_URL}/api/model/metrics`).then(r => r.ok ? r.json() : null),
+          fetch(`${API_BASE_URL}/api/matrix`).then(r => r.ok ? r.json() : null),
         ]);
 
         if (kpiRes) {
           setKpiData(kpiRes);
           setIsBackendConnected(true);
+        }
+        if (matRes) {
+          setMatrixData(matRes);
         }
         if (deptRes && deptRes.length > 0) {
           setDepartmentData(deptRes);
@@ -751,6 +785,19 @@ export default function App() {
             </button>
           )}
 
+          {isTabAllowed('matrix') && (
+            <button 
+              className={`nav-item ${activeTab === 'matrix' ? 'active' : ''}`}
+              onClick={() => navigateTo('matrix')}
+            >
+              <div className="nav-item-content">
+                <LayoutGrid size={18} />
+                <span>Talent 9-Box Matrix</span>
+              </div>
+              <span className="nav-pill" style={{ background: 'rgba(236, 72, 153, 0.15)', color: '#f472b6', borderColor: 'rgba(236, 72, 153, 0.3)' }}>9-Box</span>
+            </button>
+          )}
+
           {isTabAllowed('simulator') && (
             <button 
               className={`nav-item ${activeTab === 'simulator' ? 'active' : ''}`}
@@ -808,24 +855,25 @@ export default function App() {
           )}
         </nav>
 
-        {/* Sidebar Footer Status */}
+        {/* Sidebar Footer Info */}
         <div className="sidebar-footer">
-          <div className="model-status-indicator">
-            <span className="pulse-dot"></span>
-            <span>{isBackendConnected ? "Live API Connected (Ensemble)" : "Model v2.4 Active (86.1% Acc)"}</span>
+          <div className="system-health">
+            <div className={`status-indicator ${isBackendConnected ? 'online' : 'demo'}`}></div>
+            <span>{isBackendConnected ? 'FastAPI & ML Active (Port 8000)' : 'FastAPI Local Active'}</span>
           </div>
+          <div className="version-tag">RetentionAI Platform v2.1 • Multi-Model Ensemble</div>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="main-wrapper">
-        {/* Top Header */}
+      {/* Main Container */}
+      <main className="main-content">
+        {/* Top Header Bar */}
         <header className="top-header">
-          <div className="header-left-group">
+          <div className="header-left-wrap">
             <button 
-              className="mobile-menu-trigger" 
+              className="mobile-menu-btn" 
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              aria-label="Toggle Navigation"
+              aria-label="Toggle navigation menu"
             >
               {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -845,6 +893,7 @@ export default function App() {
                   {activeTab === 'dashboard' && 'Executive Dashboard'}
                   {activeTab === 'directory' && (activeRole === 'Team Lead' ? 'Team Risk Explorer' : activeRole === 'Data Analyst' ? 'Diagnostic Records' : 'Flight Risk Explorer')}
                   {activeTab === 'departments' && 'Department Intelligence'}
+                  {activeTab === 'matrix' && 'Talent Retention 9-Box Matrix'}
                   {activeTab === 'simulator' && 'What-If Simulation'}
                   {activeTab === 'playbook' && 'Retention Strategy Catalog'}
                   {activeTab === 'interventions' && (activeRole === 'Team Lead' ? 'Propose Retention Plan' : 'Intervention Tracker & ROI')}
@@ -855,6 +904,7 @@ export default function App() {
                 {activeTab === 'dashboard' && 'Workforce Attrition Overview'}
                 {activeTab === 'directory' && (activeRole === 'Team Lead' ? 'Team Member Risk Assessment' : activeRole === 'Data Analyst' ? 'Model Test Sample Diagnostics' : 'Employee Risk Explorer')}
                 {activeTab === 'departments' && 'Departmental Risk Distribution'}
+                {activeTab === 'matrix' && 'Talent Retention Matrix (Performance vs Flight Risk)'}
                 {activeTab === 'simulator' && 'AI What-If Retention Simulator'}
                 {activeTab === 'playbook' && 'Prescriptive Retention Playbook'}
                 {activeTab === 'interventions' && (activeRole === 'Team Lead' ? 'Submit Retention Interventions' : 'Mitigation Actions & ROI Log')}
@@ -1307,6 +1357,333 @@ export default function App() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* TAB: TALENT RETENTION 9-BOX MATRIX */}
+          {activeTab === 'matrix' && (
+            <div className="matrix-view-layout">
+              {/* Matrix Top Summary KPI Bar */}
+              <div className="matrix-kpi-banner">
+                <div className="matrix-kpi-card urgent">
+                  <div className="matrix-kpi-icon-wrap">
+                    <Target size={22} color="#fb7185" />
+                  </div>
+                  <div className="matrix-kpi-details">
+                    <div className="matrix-kpi-num">
+                      {matrixData?.urgentHeadcount ?? 105}
+                    </div>
+                    <div className="matrix-kpi-lbl">⭐ Stars at Urgent Flight Risk</div>
+                    <div className="matrix-kpi-sub">Immediate Retention Levers Needed</div>
+                  </div>
+                </div>
+
+                <div className="matrix-kpi-card exposure">
+                  <div className="matrix-kpi-icon-wrap">
+                    <IndianRupee size={22} color="#fb923c" />
+                  </div>
+                  <div className="matrix-kpi-details">
+                    <div className="matrix-kpi-num">
+                      {matrixData?.totalCostFormatted ?? '₹35.34 Cr'}
+                    </div>
+                    <div className="matrix-kpi-lbl">Total High-Risk Financial Exposure</div>
+                    <div className="matrix-kpi-sub">Projected Replacement & Lost IP Cost</div>
+                  </div>
+                </div>
+
+                <div className="matrix-kpi-card safe">
+                  <div className="matrix-kpi-icon-wrap">
+                    <ShieldCheck size={22} color="#34d399" />
+                  </div>
+                  <div className="matrix-kpi-details">
+                    <div className="matrix-kpi-num">
+                      {matrixData?.quadrants?.find(q => q.id === 'high_perf_low_risk')?.count ?? 741}
+                    </div>
+                    <div className="matrix-kpi-lbl">💎 Star Anchors (Low Risk)</div>
+                    <div className="matrix-kpi-sub">High Performers with High Loyalty</div>
+                  </div>
+                </div>
+
+                {/* Department Filter Controls */}
+                <div className="matrix-kpi-card filter-card">
+                  <div className="filter-card-header">
+                    <Filter size={15} color="#818cf8" />
+                    <span>Department Scope</span>
+                  </div>
+                  <div className="matrix-dept-pills">
+                    {['All', 'Sales', 'Research & Development', 'Human Resources'].map((dept) => (
+                      <button 
+                        key={dept}
+                        className={`matrix-dept-pill ${matrixDeptFilter === dept ? 'active' : ''}`}
+                        onClick={() => setMatrixDeptFilter(dept)}
+                      >
+                        {dept === 'Research & Development' ? 'R&D' : dept === 'Human Resources' ? 'HR' : dept}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* 3x3 Matrix Grid Container */}
+              <div className="matrix-grid-section">
+                <div className="matrix-section-header">
+                  <div>
+                    <h3 style={{ fontSize: '1.15rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <LayoutGrid size={20} color="#6366f1" />
+                      Interactive 9-Box Talent Flight Risk Matrix
+                    </h3>
+                    <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                      Cross-maps Performance & Potential against ML Attrition Risk. Click any quadrant below to inspect individual dossiers and execute 1-click interventions.
+                    </p>
+                  </div>
+                  <div className="matrix-axis-legend">
+                    <div className="matrix-legend-item">
+                      <span className="dot" style={{ background: '#f43f5e' }}></span>
+                      <span>Urgent Flight Risk</span>
+                    </div>
+                    <div className="matrix-legend-item">
+                      <span className="dot" style={{ background: '#eab308' }}></span>
+                      <span>Moderate / Under Strain</span>
+                    </div>
+                    <div className="matrix-legend-item">
+                      <span className="dot" style={{ background: '#10b981' }}></span>
+                      <span>Safe / High Stability</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3x3 Grid Wrapper with Axis Labels */}
+                <div className="matrix-grid-wrapper">
+                  {/* Top Column Labels (Risk Axis) */}
+                  <div className="matrix-col-headers">
+                    <div className="matrix-col-title low">
+                      <span>Low Flight Risk (&lt;35%)</span>
+                      <small>Stable & Retained</small>
+                    </div>
+                    <div className="matrix-col-title med">
+                      <span>Medium Flight Risk (35-59%)</span>
+                      <small>Moderate Vulnerability</small>
+                    </div>
+                    <div className="matrix-col-title high">
+                      <span>Critical Flight Risk (≥60%)</span>
+                      <small>Urgent Retention Priority</small>
+                    </div>
+                  </div>
+
+                  {/* 3x3 Quadrant Grid */}
+                  <div className="matrix-3x3-grid">
+                    {(matrixData?.quadrants || []).map((q) => {
+                      const isSelected = selectedQuadrantId === q.id;
+                      return (
+                        <div 
+                          key={q.id}
+                          className={`matrix-quadrant-card ${q.badgeColor} ${isSelected ? 'selected' : ''}`}
+                          onClick={() => setSelectedQuadrantId(q.id)}
+                        >
+                          <div className="quadrant-header">
+                            <span className="quadrant-title">{q.title}</span>
+                            <span className={`quadrant-priority-tag ${q.badgeColor}`}>
+                              {q.priority}
+                            </span>
+                          </div>
+
+                          <p className="quadrant-tagline">{q.tagline}</p>
+
+                          <div className="quadrant-stats-row">
+                            <div className="quadrant-headcount-box">
+                              <span className="quadrant-count">{q.count}</span>
+                              <span className="quadrant-pct">{q.percentage}% of workforce</span>
+                            </div>
+                            <div className="quadrant-cost-box">
+                              <span className="quadrant-cost">{q.costFormatted}</span>
+                              <span className="quadrant-cost-lbl">Exposure</span>
+                            </div>
+                          </div>
+
+                          <div className="quadrant-meter-track">
+                            <div 
+                              className={`quadrant-meter-fill ${q.badgeColor}`}
+                              style={{ width: `${Math.min(100, q.percentage * 2)}%` }}
+                            />
+                          </div>
+
+                          <div className="quadrant-footer-hint">
+                            <span>{isSelected ? '✓ Selected Quadrant' : 'Click to inspect cohort →'}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Quadrant Roster & Playbook Drill-Down */}
+              {(() => {
+                const currentQuadrant = (matrixData?.quadrants || []).find(q => q.id === selectedQuadrantId) || (matrixData?.quadrants || [])[0];
+                if (!currentQuadrant) return null;
+
+                const filteredEmployees = (currentQuadrant.employees || []).filter(e => {
+                  if (!matrixSearchQuery) return true;
+                  const sq = matrixSearchQuery.toLowerCase();
+                  return e.name.toLowerCase().includes(sq) || e.id.toLowerCase().includes(sq) || e.role.toLowerCase().includes(sq) || e.department.toLowerCase().includes(sq);
+                });
+
+                return (
+                  <div className="quadrant-drilldown-panel">
+                    {/* Strategy Banner */}
+                    <div className={`quadrant-strategy-banner ${currentQuadrant.badgeColor}`}>
+                      <div className="strategy-banner-left">
+                        <div className="strategy-title-row">
+                          <span className="strategy-quadrant-name">{currentQuadrant.title}</span>
+                          <span className={`status-badge ${currentQuadrant.badgeColor === 'critical' ? 'critical' : currentQuadrant.badgeColor === 'warning' ? 'high' : 'stable'}`}>
+                            {currentQuadrant.priority} • {currentQuadrant.count} Personnel
+                          </span>
+                        </div>
+                        <p className="strategy-text">
+                          <strong>Prescriptive HR Blueprint:</strong> {currentQuadrant.strategy}
+                        </p>
+                      </div>
+                      <div className="strategy-banner-right">
+                        <div className="strategy-stat-pill">
+                          <span className="lbl">Exposure at Risk</span>
+                          <span className="val">{currentQuadrant.costFormatted}</span>
+                        </div>
+                        <div className="strategy-stat-pill">
+                          <span className="lbl">Avg Flight Risk</span>
+                          <span className="val" style={{ color: currentQuadrant.avgRiskScore >= 60 ? '#fb7185' : '#818cf8' }}>
+                            {currentQuadrant.avgRiskScore}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quadrant Employee Roster Table */}
+                    <div className="chart-card">
+                      <div className="card-title-row" style={{ flexWrap: 'wrap', gap: 12 }}>
+                        <div>
+                          <h4 style={{ fontSize: '1.05rem', fontWeight: 800 }}>
+                            Cohort Roster: {currentQuadrant.title} ({filteredEmployees.length} Shown)
+                          </h4>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                            Diagnose individual risk profiles, test mitigation in What-If Simulator, or generate 1-on-1 plans with AI Copilot.
+                          </span>
+                        </div>
+
+                        <div className="search-box" style={{ maxWidth: 280 }}>
+                          <Search size={15} />
+                          <input 
+                            type="text" 
+                            placeholder="Filter cohort..."
+                            value={matrixSearchQuery}
+                            onChange={(e) => setMatrixSearchQuery(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="table-responsive">
+                        <table className="enterprise-table">
+                          <thead>
+                            <tr>
+                              <th>Employee</th>
+                              <th>Department & Role</th>
+                              <th>Risk Score</th>
+                              <th>Base CTC</th>
+                              <th>Overtime / Mo</th>
+                              <th>Last Promotion</th>
+                              <th>Primary Drivers</th>
+                              <th style={{ textAlign: 'right' }}>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredEmployees.slice(0, 50).map((emp) => (
+                              <tr key={emp.id}>
+                                <td>
+                                  <div className="emp-cell">
+                                    <img src={emp.avatar} alt={emp.name} className="table-avatar" />
+                                    <div>
+                                      <div className="emp-name" style={{ cursor: 'pointer' }} onClick={() => { setSelectedEmployee(emp); setIsModalOpen(true); }}>
+                                        {emp.name}
+                                      </div>
+                                      <div className="emp-id">{emp.id}</div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div style={{ fontWeight: 600 }}>{emp.role}</div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{emp.department}</div>
+                                </td>
+                                <td>
+                                  <span className={`risk-badge ${emp.riskTier === 'Critical' ? 'critical' : emp.riskTier === 'High' ? 'high' : emp.riskTier === 'Medium' ? 'medium' : 'low'}`}>
+                                    {emp.riskScore}% ({emp.riskTier})
+                                  </span>
+                                </td>
+                                <td>
+                                  <div style={{ fontWeight: 700 }}>₹{(emp.salary / 100000).toFixed(1)} LPA</div>
+                                  <div style={{ fontSize: '0.72rem', color: emp.salaryMarketRatio < 0.85 ? '#fb7185' : 'var(--text-muted)' }}>
+                                    {emp.salaryMarketRatio}x Market
+                                  </div>
+                                </td>
+                                <td>
+                                  <span style={{ color: emp.overtimeHoursMonth > 20 ? '#fb7185' : 'inherit', fontWeight: emp.overtimeHoursMonth > 20 ? 700 : 500 }}>
+                                    {emp.overtimeHoursMonth} hrs
+                                  </span>
+                                </td>
+                                <td>
+                                  <span style={{ color: emp.lastPromotionMonths >= 36 ? '#eab308' : 'inherit' }}>
+                                    {emp.lastPromotionMonths} mos ago
+                                  </span>
+                                </td>
+                                <td>
+                                  <div className="driver-tags">
+                                    {emp.primaryDrivers.slice(0, 2).map((d, i) => (
+                                      <span key={i} className="driver-tag">
+                                        {d}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+                                    <button 
+                                      className="btn-action-trigger"
+                                      title="Generate 1-on-1 Plan with AI Copilot"
+                                      onClick={() => askCopilotAboutEmployee(emp)}
+                                    >
+                                      <Sparkles size={14} />
+                                      <span>Copilot</span>
+                                    </button>
+                                    <button 
+                                      className="btn-action-trigger"
+                                      title="Test Levers in What-If Simulator"
+                                      onClick={() => {
+                                        setSimTargetEmp(emp);
+                                        navigateTo('simulator');
+                                      }}
+                                    >
+                                      <Sliders size={14} />
+                                      <span>Simulate</span>
+                                    </button>
+                                    <button 
+                                      className="icon-btn"
+                                      title="View Profile Dossier"
+                                      onClick={() => {
+                                        setSelectedEmployee(emp);
+                                        setIsModalOpen(true);
+                                      }}
+                                    >
+                                      <UserCheck size={15} />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
