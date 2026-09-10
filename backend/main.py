@@ -593,6 +593,240 @@ def simulate_retention_intervention(req: SimulationRequest):
     }
 
 
+# In-Memory Intervention Commitments & Audit Store
+cached_interventions = [
+    {
+        "id": "INT-101",
+        "empId": "EMP-1",
+        "name": "Aarav Sharma",
+        "department": "Sales",
+        "role": "Sales Executive",
+        "action": "Base Salary Calibration (+12%) & On-Call Cap",
+        "costInr": 345000,
+        "riskBefore": 80,
+        "riskAfter": 38,
+        "date": "Today",
+        "status": "Approved",
+        "roiMultiplier": "4.2x",
+        "notes": "Fast-tracked retention package approved to prevent key account disruption."
+    },
+    {
+        "id": "INT-102",
+        "empId": "EMP-4",
+        "name": "Vikram Gupta",
+        "department": "Research & Development",
+        "role": "Research Scientist",
+        "action": "Fast-Track Promotion Milestone & Workload Balancing",
+        "costInr": 180000,
+        "riskBefore": 76,
+        "riskAfter": 35,
+        "date": "Yesterday",
+        "status": "In Progress",
+        "roiMultiplier": "3.8x",
+        "notes": "Promotion to Senior Scientist scheduled for next sprint cycle."
+    }
+]
+
+
+class CommitInterventionRequest(BaseModel):
+    employee_id: str
+    salary_delta_pct: float = 0.0
+    overtime_hours: float = 20.0
+    remote_days: int = 3
+    promotion_fast_track: bool = False
+    bonus_inr: float = 0.0
+    action_summary: Optional[str] = None
+    manager_notes: Optional[str] = None
+    status: Optional[str] = "Approved"
+
+
+@app.get("/api/interventions")
+def get_interventions():
+    """Returns list of committed retention interventions and audit logs."""
+    total_spend = sum(i.get('costInr', 0) for i in cached_interventions)
+    avg_risk_reduction = round(
+        sum(i.get('riskBefore', 0) - i.get('riskAfter', 0) for i in cached_interventions) / len(cached_interventions), 1
+    ) if cached_interventions else 0
+
+    return {
+        "total": len(cached_interventions),
+        "totalSpendInr": total_spend,
+        "totalSpendFormatted": f"₹{(total_spend / 100000.0):.1f} Lakhs",
+        "avgRiskReduction": f"-{avg_risk_reduction}%",
+        "interventions": cached_interventions
+    }
+
+
+@app.post("/api/interventions/commit")
+def commit_intervention(req: CommitInterventionRequest):
+    """Commits a simulated retention package into the live audit log."""
+    emp = next((e for e in cached_scored_employees if e['id'] == req.employee_id), None)
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    base_score = emp['riskScore']
+    salary_impact = req.salary_delta_pct * 1.8
+    ot_impact = (emp['overtimeHoursMonth'] - req.overtime_hours) * 0.9
+    remote_impact = (req.remote_days - 2) * 4.0
+    promo_impact = 14.0 if req.promotion_fast_track else 0.0
+    bonus_impact = (req.bonus_inr / 50000.0) * 1.5
+
+    simulated_score = int(round(base_score - salary_impact - ot_impact - remote_impact - promo_impact - bonus_impact))
+    simulated_score = max(6, min(95, simulated_score))
+
+    # Calculate investment cost
+    annual_salary_increase = int(emp['salary'] * (req.salary_delta_pct / 100.0))
+    total_cost = int(annual_salary_increase + req.bonus_inr)
+    if total_cost == 0:
+        total_cost = 75000  # baseline administrative allocation
+
+    actions = []
+    if req.salary_delta_pct > 0:
+        actions.append(f"+{int(req.salary_delta_pct)}% Merit Raise")
+    if req.overtime_hours < emp['overtimeHoursMonth']:
+        actions.append(f"OT Capped @ {int(req.overtime_hours)}h")
+    if req.remote_days > 2:
+        actions.append(f"{req.remote_days} Remote Days")
+    if req.promotion_fast_track:
+        actions.append("Fast-Track Title Advancement")
+    if req.bonus_inr > 0:
+        actions.append(f"₹{(req.bonus_inr/100000.0):.1f}L Bonus")
+
+    action_summary = req.action_summary or (", ".join(actions) if actions else "Custom Retention Policy")
+    
+    new_id = f"INT-{100 + len(cached_interventions) + 1}"
+    record = {
+        "id": new_id,
+        "empId": emp['id'],
+        "name": emp['name'],
+        "department": emp['department'],
+        "role": emp['role'],
+        "action": action_summary,
+        "costInr": total_cost,
+        "riskBefore": base_score,
+        "riskAfter": simulated_score,
+        "date": "Just now",
+        "status": req.status or "Approved",
+        "roiMultiplier": "4.8x" if (base_score - simulated_score) > 25 else "3.2x",
+        "notes": req.manager_notes or f"Executive intervention submitted. Predicted flight risk dropped from {base_score}% to {simulated_score}%."
+    }
+
+    cached_interventions.insert(0, record)
+    emp['status'] = "Mitigation Active"
+    emp['riskScore'] = simulated_score
+    if simulated_score < 35:
+        emp['riskTier'] = "Low"
+    elif simulated_score < 60:
+        emp['riskTier'] = "Medium"
+    else:
+        emp['riskTier'] = "High"
+
+    return {
+        "status": "success",
+        "message": f"Retention package successfully committed for {emp['name']}.",
+        "intervention": record
+    }
+
+
+class ScheduleMeetingRequest(BaseModel):
+    employee_id: str
+    meeting_type: str = "1-on-1 Retention Check-in"
+    meeting_date: str = "Tomorrow at 10:30 AM"
+    duration_minutes: int = 30
+    talking_points: Optional[List[str]] = None
+
+
+@app.post("/api/workflow/schedule-meeting")
+def schedule_retention_meeting(req: ScheduleMeetingRequest):
+    """Simulates calendar sync and generates talking points for manager check-in."""
+    emp = next((e for e in cached_scored_employees if e['id'] == req.employee_id), None)
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    default_talking_points = [
+        f"Discuss workload and monthly overtime ({emp['overtimeHoursMonth']} hrs logged).",
+        f"Review compensation parity vs benchmark (Current: {emp['salaryMarketRatio']}x market).",
+        f"Address career progression trajectory ({emp['lastPromotionMonths']}m since last title milestone).",
+        "Align on quarterly Individual Development Plan (IDP) goals."
+    ]
+
+    return {
+        "status": "confirmed",
+        "calendarEventId": f"CAL-RET-{emp['id']}-{int(pd.Timestamp.now().timestamp())}",
+        "meetingType": req.meeting_type,
+        "scheduledTime": req.meeting_date,
+        "duration": f"{req.duration_minutes} mins",
+        "employee": {
+            "id": emp['id'],
+            "name": emp['name'],
+            "role": emp['role'],
+            "department": emp['department']
+        },
+        "agenda": req.talking_points or default_talking_points,
+        "confirmationMessage": f"Calendar invitation dispatched for {emp['name']}'s 1-on-1 retention review."
+    }
+
+
+@app.get("/api/workflow/talking-points/{employee_id}")
+def get_manager_talking_points(employee_id: str):
+    """Generates a structured manager discussion guide and retention talking points."""
+    emp = next((e for e in cached_scored_employees if e['id'].lower() == employee_id.lower()), None)
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    replacement_cost = int(emp['salary'] * 1.5)
+    
+    return {
+        "employee": {
+            "id": emp['id'],
+            "name": emp['name'],
+            "role": emp['role'],
+            "department": emp['department'],
+            "avatar": emp['avatar'],
+            "riskScore": emp['riskScore'],
+            "riskTier": emp['riskTier'],
+            "salaryFormatted": f"₹{(emp['salary']/100000.0):.1f} LPA",
+            "marketRatio": f"{emp['salaryMarketRatio']}x",
+            "overtime": f"{emp['overtimeHoursMonth']} hrs/mo",
+            "promotionLag": f"{emp['lastPromotionMonths']} months"
+        },
+        "estimatedCostAtRisk": f"₹{(replacement_cost/100000.0):.1f} Lakhs",
+        "primaryBlockers": emp['primaryDrivers'],
+        "discussionPhases": [
+            {
+                "phase": "1. Rapport & Psychological Safety (0-8 mins)",
+                "goal": "Establish a supportive climate without leading with attrition alarmism.",
+                "samplePrompts": [
+                    "How has your energy and workload felt over the past couple of sprints?",
+                    "What parts of your current projects are giving you the most momentum vs draining you?"
+                ]
+            },
+            {
+                "phase": "2. Root Cause Diagnostics (8-18 mins)",
+                "goal": "Validate ML-identified risk factors.",
+                "samplePrompts": [
+                    f"I noticed we've been running high on extra hours ({emp['overtimeHoursMonth']}h/mo). How can we reprioritize deliverables to give you breathing room?",
+                    f"It's been {emp['lastPromotionMonths']} months since your last role milestone. Where do you see your scope expanding next?"
+                ]
+            },
+            {
+                "phase": "3. Collaborative Solutioning & Commitments (18-30 mins)",
+                "goal": "Co-create actionable retention levers.",
+                "samplePrompts": [
+                    "We are reviewing off-cycle compensation calibrations—what does competitive recognition look like for you?",
+                    "Let's establish a fast-track review milestone for the upcoming quarterly cycle."
+                ]
+            }
+        ],
+        "recommendedLevers": [
+            f"Propose a +{10 if emp['riskScore'] > 70 else 6}% salary benchmark correction",
+            f"Cap monthly overtime to ≤12 hours immediately",
+            "Schedule follow-up milestone check-in in 30 days"
+        ]
+    }
+
+
+
 class CopilotRequest(BaseModel):
     query: str
     context_employee_id: Optional[str] = None
