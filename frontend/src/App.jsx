@@ -164,12 +164,20 @@ export default function App() {
       setIsModalOpen(false);
     };
 
+    const handleResize = () => {
+      if (window.innerWidth > 1024) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
     window.addEventListener('popstate', handlePopState);
     window.addEventListener('hashchange', handlePopState);
+    window.addEventListener('resize', handleResize);
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('hashchange', handlePopState);
+      window.removeEventListener('resize', handleResize);
     };
   }, []);
 
@@ -1116,7 +1124,7 @@ export default function App() {
                 <div className="notif-dropdown-menu">
                   <div className="notif-dropdown-header">
                     <div className="notif-header-title">
-                      <Bell size={16} color="#6366f1" />
+                      <Bell size={16} className="notif-title-icon" />
                       <h4>Risk Anomaly Center</h4>
                       {unreadAlertsCount > 0 && (
                         <span className="notif-count-pill">{unreadAlertsCount} Unread</span>
@@ -1137,7 +1145,7 @@ export default function App() {
                         className={`notif-category-chip ${alertCategory === cat ? 'active' : ''}`}
                         onClick={() => setAlertCategory(cat)}
                       >
-                        {cat === 'Flight Risk' ? '🚨 Flight' : cat === 'Burnout' ? '🔥 Burnout' : cat === 'Compensation' ? '💸 Comp' : cat === 'Stagnation' ? '⏳ Stagnation' : cat === 'Milestones' ? '✅ Milestones' : 'All'}
+                        {cat}
                       </button>
                     ))}
                   </div>
@@ -1146,7 +1154,7 @@ export default function App() {
                   <div className="notif-feed-container">
                     {alertsData.filter(a => alertCategory === 'All' || a.category === alertCategory).length === 0 ? (
                       <div className="notif-empty-state">
-                        <CheckCircle2 size={28} color="#10b981" />
+                        <CheckCircle2 size={26} className="notif-empty-icon" />
                         <p>No active anomalies in this category.</p>
                       </div>
                     ) : (
