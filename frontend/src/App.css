@@ -2673,19 +2673,99 @@ body {
   color: #4f46e5;
 }
 
-/* Quadrant Strategy Banner in Drill-down */
-.quadrant-drilldown-panel {
+/* ==========================================================================
+   Cohort Deep-Dive Modal Styles (9-Box Overlay)
+   ========================================================================== */
+
+.cohort-modal-content {
+  width: 1120px;
+  max-width: 95vw;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  border-radius: 18px;
+}
+
+.cohort-modal-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+.cohort-modal-icon.critical {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.cohort-modal-icon.warning,
+.cohort-modal-icon.high {
+  background: rgba(249, 115, 22, 0.12);
+  color: #f97316;
+  border-color: rgba(249, 115, 22, 0.25);
+}
+
+.cohort-modal-icon.medium {
+  background: rgba(234, 179, 8, 0.12);
+  color: #eab308;
+  border-color: rgba(234, 179, 8, 0.25);
+}
+
+.cohort-modal-icon.success,
+.cohort-modal-icon.normal {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.cohort-modal-body {
+  flex: 1;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  animation: copilotFadeIn 0.25s ease-out;
+  padding: 20px 24px;
+  scrollbar-width: thin;
 }
 
+.cohort-roster-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.cohort-table-wrap {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+}
+
+.cohort-table-wrap thead {
+  position: sticky;
+  top: 0;
+  background: var(--bg-sidebar);
+  z-index: 10;
+}
+
+.light-theme .cohort-table-wrap thead {
+  background: #f8fafc;
+}
+
+/* Quadrant Strategy Banner */
 .quadrant-strategy-banner {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: 16px;
-  padding: 18px 22px;
+  border-radius: 14px;
+  padding: 16px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2727,23 +2807,8 @@ body {
   min-width: 280px;
 }
 
-.strategy-title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 6px;
-  flex-wrap: wrap;
-}
-
-.strategy-quadrant-name {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: var(--text-main);
-  letter-spacing: -0.01em;
-}
-
 .strategy-text {
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   color: var(--text-muted);
   line-height: 1.5;
   margin: 0;

@@ -444,6 +444,7 @@ export default function App() {
   // Talent Retention Matrix State
   const [matrixData, setMatrixData] = useState(null);
   const [selectedQuadrantId, setSelectedQuadrantId] = useState('high_perf_high_risk');
+  const [isCohortModalOpen, setIsCohortModalOpen] = useState(false);
   const [matrixDeptFilter, setMatrixDeptFilter] = useState('All');
   const [matrixSearchQuery, setMatrixSearchQuery] = useState('');
   const [isMatrixLoading, setIsMatrixLoading] = useState(false);
@@ -1838,7 +1839,10 @@ export default function App() {
                                 <div 
                                   key={q.id}
                                   className={`matrix-quadrant-card ${q.badgeColor} ${isSelected ? 'selected' : ''}`}
-                                  onClick={() => setSelectedQuadrantId(q.id)}
+                                  onClick={() => {
+                                    setSelectedQuadrantId(q.id);
+                                    setIsCohortModalOpen(true);
+                                  }}
                                 >
                                   <div className="quadrant-header">
                                     <span className="quadrant-title">{q.title}</span>
@@ -1868,7 +1872,7 @@ export default function App() {
                                   </div>
 
                                   <div className="quadrant-footer-hint">
-                                    <span>{isSelected ? '✓ Selected Cohort' : 'Inspect cohort →'}</span>
+                                    <span>Inspect Cohort ({q.count}) →</span>
                                   </div>
                                 </div>
                               );
@@ -1880,174 +1884,6 @@ export default function App() {
                   </div>
                 </div>
               </div>
-
-              {/* Quadrant Roster & Playbook Drill-Down */}
-              {(() => {
-                const currentQuadrant = (matrixData?.quadrants || []).find(q => q.id === selectedQuadrantId) || (matrixData?.quadrants || [])[0];
-                if (!currentQuadrant) return null;
-
-                const filteredEmployees = (currentQuadrant.employees || []).filter(e => {
-                  if (!matrixSearchQuery) return true;
-                  const sq = matrixSearchQuery.toLowerCase();
-                  return e.name.toLowerCase().includes(sq) || e.id.toLowerCase().includes(sq) || e.role.toLowerCase().includes(sq) || e.department.toLowerCase().includes(sq);
-                });
-
-                return (
-                  <div className="quadrant-drilldown-panel">
-                    {/* Strategy Banner */}
-                    <div className={`quadrant-strategy-banner ${currentQuadrant.badgeColor}`}>
-                      <div className="strategy-banner-left">
-                        <div className="strategy-title-row">
-                          <span className="strategy-quadrant-name">{currentQuadrant.title}</span>
-                          <span className={`status-badge ${currentQuadrant.badgeColor === 'critical' ? 'critical' : currentQuadrant.badgeColor === 'warning' ? 'high' : 'stable'}`}>
-                            {currentQuadrant.priority} • {currentQuadrant.count} Personnel
-                          </span>
-                        </div>
-                        <p className="strategy-text">
-                          <strong>Prescriptive HR Blueprint:</strong> {currentQuadrant.strategy}
-                        </p>
-                      </div>
-                      <div className="strategy-banner-right">
-                        <div className="strategy-stat-pill">
-                          <span className="lbl">Exposure at Risk</span>
-                          <span className="val">{currentQuadrant.costFormatted}</span>
-                        </div>
-                        <div className="strategy-stat-pill">
-                          <span className="lbl">Avg Flight Risk</span>
-                          <span className="val" style={{ color: currentQuadrant.avgRiskScore >= 60 ? '#fb7185' : '#818cf8' }}>
-                            {currentQuadrant.avgRiskScore}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Quadrant Employee Roster Table */}
-                    <div className="chart-card">
-                      <div className="card-title-row" style={{ flexWrap: 'wrap', gap: 12 }}>
-                        <div>
-                          <h4 style={{ fontSize: '1.05rem', fontWeight: 800 }}>
-                            Cohort Roster: {currentQuadrant.title} ({filteredEmployees.length} Shown)
-                          </h4>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                            Diagnose individual risk profiles, test mitigation in What-If Simulator, or generate 1-on-1 plans with AI Copilot.
-                          </span>
-                        </div>
-
-                        <div className="search-box" style={{ maxWidth: 280 }}>
-                          <Search size={15} />
-                          <input 
-                            type="text" 
-                            placeholder="Filter cohort..."
-                            value={matrixSearchQuery}
-                            onChange={(e) => setMatrixSearchQuery(e.target.value)}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="table-responsive">
-                        <table className="enterprise-table">
-                          <thead>
-                            <tr>
-                              <th>Employee</th>
-                              <th>Department & Role</th>
-                              <th>Risk Score</th>
-                              <th>Base CTC</th>
-                              <th>Overtime / Mo</th>
-                              <th>Last Promotion</th>
-                              <th>Primary Drivers</th>
-                              <th style={{ textAlign: 'right' }}>Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {filteredEmployees.slice(0, 50).map((emp) => (
-                              <tr key={emp.id}>
-                                <td>
-                                  <div className="emp-cell">
-                                    <img src={emp.avatar} alt={emp.name} className="table-avatar" />
-                                    <div>
-                                      <div className="emp-name" style={{ cursor: 'pointer' }} onClick={() => { setSelectedEmployee(emp); setIsModalOpen(true); }}>
-                                        {emp.name}
-                                      </div>
-                                      <div className="emp-id">{emp.id}</div>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td>
-                                  <div style={{ fontWeight: 600 }}>{emp.role}</div>
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{emp.department}</div>
-                                </td>
-                                <td>
-                                  <span className={`risk-badge ${emp.riskTier === 'Critical' ? 'critical' : emp.riskTier === 'High' ? 'high' : emp.riskTier === 'Medium' ? 'medium' : 'low'}`}>
-                                    {emp.riskScore}% ({emp.riskTier})
-                                  </span>
-                                </td>
-                                <td>
-                                  <div style={{ fontWeight: 700 }}>₹{(emp.salary / 100000).toFixed(1)} LPA</div>
-                                  <div style={{ fontSize: '0.72rem', color: emp.salaryMarketRatio < 0.85 ? '#fb7185' : 'var(--text-muted)' }}>
-                                    {emp.salaryMarketRatio}x Market
-                                  </div>
-                                </td>
-                                <td>
-                                  <span style={{ color: emp.overtimeHoursMonth > 20 ? '#fb7185' : 'inherit', fontWeight: emp.overtimeHoursMonth > 20 ? 700 : 500 }}>
-                                    {emp.overtimeHoursMonth} hrs
-                                  </span>
-                                </td>
-                                <td>
-                                  <span style={{ color: emp.lastPromotionMonths >= 36 ? '#eab308' : 'inherit' }}>
-                                    {emp.lastPromotionMonths} mos ago
-                                  </span>
-                                </td>
-                                <td>
-                                  <div className="driver-tags">
-                                    {emp.primaryDrivers.slice(0, 2).map((d, i) => (
-                                      <span key={i} className="driver-tag">
-                                        {d}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </td>
-                                <td>
-                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
-                                    <button 
-                                      className="btn-action-trigger"
-                                      title="Generate 1-on-1 Plan with AI Copilot"
-                                      onClick={() => askCopilotAboutEmployee(emp)}
-                                    >
-                                      <Sparkles size={14} />
-                                      <span>Copilot</span>
-                                    </button>
-                                    <button 
-                                      className="btn-action-trigger"
-                                      title="Test Levers in What-If Simulator"
-                                      onClick={() => {
-                                        setSimTargetEmp(emp);
-                                        navigateTo('simulator');
-                                      }}
-                                    >
-                                      <Sliders size={14} />
-                                      <span>Simulate</span>
-                                    </button>
-                                    <button 
-                                      className="icon-btn"
-                                      title="View Profile Dossier"
-                                      onClick={() => {
-                                        setSelectedEmployee(emp);
-                                        setIsModalOpen(true);
-                                      }}
-                                    >
-                                      <UserCheck size={15} />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
             </div>
           )}
 
@@ -2549,6 +2385,214 @@ export default function App() {
           )}
         </div>
       </main>
+
+      {/* 9-Box Matrix Quadrant Cohort Deep-Dive Modal */}
+      {isCohortModalOpen && (() => {
+        const currentQuadrant = (matrixData?.quadrants || []).find(q => q.id === selectedQuadrantId) || (matrixData?.quadrants || [])[0];
+        if (!currentQuadrant) return null;
+
+        const filteredEmployees = (currentQuadrant.employees || []).filter(e => {
+          if (!matrixSearchQuery) return true;
+          const sq = matrixSearchQuery.toLowerCase();
+          return e.name.toLowerCase().includes(sq) || e.id.toLowerCase().includes(sq) || e.role.toLowerCase().includes(sq) || e.department.toLowerCase().includes(sq);
+        });
+
+        return (
+          <div className="modal-backdrop" onClick={() => setIsCohortModalOpen(false)}>
+            <div className="modal-content cohort-modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <div className={`cohort-modal-icon ${currentQuadrant.badgeColor}`}>
+                    <LayoutGrid size={22} />
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>{currentQuadrant.title}</h3>
+                      <span className={`status-badge ${currentQuadrant.badgeColor === 'critical' ? 'critical' : currentQuadrant.badgeColor === 'warning' ? 'high' : 'stable'}`}>
+                        {currentQuadrant.priority}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                      {currentQuadrant.count} Personnel • {currentQuadrant.percentage}% of Workforce • Scope: {matrixDeptFilter === 'All' ? 'All Departments' : matrixDeptFilter}
+                    </p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button 
+                    className="btn-secondary" 
+                    onClick={() => {
+                      if (matrixDeptFilter && matrixDeptFilter !== 'All') {
+                        setDeptFilter(matrixDeptFilter);
+                      }
+                      setIsCohortModalOpen(false);
+                      navigateTo('directory');
+                    }}
+                    title="Open Cohort in Directory Tab"
+                  >
+                    <Users size={14} />
+                    <span>View in Directory</span>
+                  </button>
+                  <button className="close-btn" onClick={() => setIsCohortModalOpen(false)}>
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="cohort-modal-body">
+                {/* Strategic Blueprint Banner */}
+                <div className={`quadrant-strategy-banner ${currentQuadrant.badgeColor}`}>
+                  <div className="strategy-banner-left">
+                    <p className="strategy-text">
+                      <strong>Prescriptive HR Blueprint:</strong> {currentQuadrant.strategy}
+                    </p>
+                  </div>
+                  <div className="strategy-banner-right">
+                    <div className="strategy-stat-pill">
+                      <span className="lbl">Exposure at Risk</span>
+                      <span className="val">{currentQuadrant.costFormatted}</span>
+                    </div>
+                    <div className="strategy-stat-pill">
+                      <span className="lbl">Avg Flight Risk</span>
+                      <span className="val" style={{ color: currentQuadrant.avgRiskScore >= 60 ? '#fb7185' : '#818cf8' }}>
+                        {currentQuadrant.avgRiskScore}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cohort Employee Roster Table */}
+                <div className="cohort-roster-section">
+                  <div className="card-title-row" style={{ flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+                    <div>
+                      <h4 style={{ fontSize: '1rem', fontWeight: 800 }}>
+                        Cohort Personnel ({filteredEmployees.length} Shown)
+                      </h4>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                        Diagnose individual profiles, test mitigation in What-If Simulator, or generate 1-on-1 plans with AI Copilot.
+                      </span>
+                    </div>
+
+                    <div className="search-box" style={{ maxWidth: 280 }}>
+                      <Search size={15} />
+                      <input 
+                        type="text" 
+                        placeholder="Filter cohort..."
+                        value={matrixSearchQuery}
+                        onChange={(e) => setMatrixSearchQuery(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="table-responsive cohort-table-wrap">
+                    <table className="enterprise-table">
+                      <thead>
+                        <tr>
+                          <th>Employee</th>
+                          <th>Department & Role</th>
+                          <th>Risk Score</th>
+                          <th>Base CTC</th>
+                          <th>Overtime / Mo</th>
+                          <th>Last Promotion</th>
+                          <th>Primary Drivers</th>
+                          <th style={{ textAlign: 'right' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredEmployees.map((emp) => (
+                          <tr key={emp.id}>
+                            <td>
+                              <div className="emp-cell">
+                                <img src={emp.avatar} alt={emp.name} className="table-avatar" />
+                                <div>
+                                  <div className="emp-name" style={{ cursor: 'pointer' }} onClick={() => { setSelectedEmployee(emp); setIsModalOpen(true); }}>
+                                    {emp.name}
+                                  </div>
+                                  <div className="emp-id">{emp.id}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <div style={{ fontWeight: 600 }}>{emp.role}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{emp.department}</div>
+                            </td>
+                            <td>
+                              <span className={`risk-badge ${emp.riskTier === 'Critical' ? 'critical' : emp.riskTier === 'High' ? 'high' : emp.riskTier === 'Medium' ? 'medium' : 'low'}`}>
+                                {emp.riskScore}% ({emp.riskTier})
+                              </span>
+                            </td>
+                            <td>
+                              <div style={{ fontWeight: 700 }}>₹{(emp.salary / 100000).toFixed(1)} LPA</div>
+                              <div style={{ fontSize: '0.72rem', color: emp.salaryMarketRatio < 0.85 ? '#fb7185' : 'var(--text-muted)' }}>
+                                {emp.salaryMarketRatio}x Market
+                              </div>
+                            </td>
+                            <td>
+                              <span style={{ color: emp.overtimeHoursMonth > 20 ? '#fb7185' : 'inherit', fontWeight: emp.overtimeHoursMonth > 20 ? 700 : 500 }}>
+                                {emp.overtimeHoursMonth} hrs
+                              </span>
+                            </td>
+                            <td>
+                              <span style={{ color: emp.lastPromotionMonths >= 36 ? '#eab308' : 'inherit' }}>
+                                {emp.lastPromotionMonths} mos ago
+                              </span>
+                            </td>
+                            <td>
+                              <div className="driver-tags">
+                                {emp.primaryDrivers.slice(0, 2).map((d, i) => (
+                                  <span key={i} className="driver-tag">
+                                    {d}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+                                <button 
+                                  className="btn-action-trigger"
+                                  title="Generate 1-on-1 Plan with AI Copilot"
+                                  onClick={() => {
+                                    setIsCohortModalOpen(false);
+                                    askCopilotAboutEmployee(emp);
+                                  }}
+                                >
+                                  <Sparkles size={14} />
+                                  <span>Copilot</span>
+                                </button>
+                                <button 
+                                  className="btn-action-trigger"
+                                  title="Test Levers in What-If Simulator"
+                                  onClick={() => {
+                                    setIsCohortModalOpen(false);
+                                    setSimTargetEmp(emp);
+                                    navigateTo('simulator');
+                                  }}
+                                >
+                                  <Sliders size={14} />
+                                  <span>Simulate</span>
+                                </button>
+                                <button 
+                                  className="icon-btn"
+                                  title="View Profile Dossier"
+                                  onClick={() => {
+                                    setSelectedEmployee(emp);
+                                    setIsModalOpen(true);
+                                  }}
+                                >
+                                  <UserCheck size={15} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 360 Employee Detail & Intervention Modal */}
       {isModalOpen && selectedEmployee && (
