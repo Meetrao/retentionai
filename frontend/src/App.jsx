@@ -3,7 +3,8 @@ import {
   Users, TrendingUp, AlertTriangle, ShieldCheck, 
   IndianRupee, Activity, Cpu, Sliders, PlayCircle, 
   Lightbulb, Search, Bell, Moon, Sun, ArrowUpRight, 
-  ArrowDownRight, CheckCircle2, ChevronRight, X, Menu,
+  ArrowDownRight, CheckCircle2, ChevronRight, ChevronLeft,
+  ChevronsLeft, ChevronsRight, X, Menu,
   Upload, FileText, BarChart3, Database, RefreshCw,
   Clock, Award, Sparkles, UserCheck, Briefcase, Building2,
   CheckSquare, Filter, Layers, HelpCircle, Bot, Send,
@@ -108,6 +109,8 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
   const [riskFilter, setRiskFilter] = useState('All');
+  const [dirPage, setDirPage] = useState(1);
+  const dirPageSize = 5;
 
   const currentRoleConfig = ROLE_PERMISSIONS[activeRole] || ROLE_PERMISSIONS['HR Executive'];
   const isTabAllowed = (tab) => currentRoleConfig.allowedTabs.includes(tab);
@@ -246,11 +249,85 @@ export default function App() {
 
   // Training pipeline simulation
   const [isRetraining, setIsRetraining] = useState(false);
+  const [playbookCategoryFilter, setPlaybookCategoryFilter] = useState('All');
 
   // Helper notification trigger
   const showToast = (msg) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 3500);
+  };
+
+  // Export Workforce Risk Dossier as CSV
+  const handleExportDossier = () => {
+    if (!filteredEmployees || filteredEmployees.length === 0) {
+      showToast('No employee records available to export.');
+      return;
+    }
+
+    try {
+      const headers = [
+        'Employee ID',
+        'Employee Name',
+        'Department',
+        'Role',
+        'Tenure (Years)',
+        'Annual CTC (INR)',
+        'Market Ratio',
+        'Overtime (Hours/Mo)',
+        'Last Promotion (Months Ago)',
+        'Satisfaction Score (1-10)',
+        'Performance Rating (1-5)',
+        'Flight Risk Score (%)',
+        'Risk Tier',
+        'Primary Flight Risk Drivers',
+        'Est. Replacement Cost (INR)',
+        'Retention Status'
+      ];
+
+      const csvRows = [headers.join(',')];
+
+      filteredEmployees.forEach(emp => {
+        const replacementCost = Math.round(emp.salary * 1.5);
+        const drivers = (emp.primaryDrivers || []).join('; ');
+
+        const row = [
+          `"${(emp.id || '').replace(/"/g, '""')}"`,
+          `"${(emp.name || '').replace(/"/g, '""')}"`,
+          `"${(emp.department || '').replace(/"/g, '""')}"`,
+          `"${(emp.role || '').replace(/"/g, '""')}"`,
+          emp.tenureYears ?? '',
+          emp.salary ?? '',
+          emp.salaryMarketRatio ?? '',
+          emp.overtimeHoursMonth ?? '',
+          emp.lastPromotionMonths ?? '',
+          emp.satisfactionScore ?? '',
+          emp.performanceRating ?? '',
+          emp.riskScore ?? '',
+          `"${(emp.riskTier || '').replace(/"/g, '""')}"`,
+          `"${drivers.replace(/"/g, '""')}"`,
+          replacementCost,
+          `"${(emp.status || 'Under Active Review').replace(/"/g, '""')}"`
+        ];
+        csvRows.push(row.join(','));
+      });
+
+      const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const dateStr = new Date().toISOString().split('T')[0];
+      const deptSlug = deptFilter === 'All' ? 'All_Depts' : deptFilter.replace(/\s+/g, '_');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `RetentionAI_Risk_Dossier_${deptSlug}_${dateStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      showToast(`Exported ${filteredEmployees.length} employee records to CSV dossier.`);
+    } catch (err) {
+      console.error('Export failed:', err);
+      showToast('Failed to export risk dossier.');
+    }
   };
 
   // Copilot Assistant State
@@ -262,11 +339,7 @@ export default function App() {
       id: 'msg-welcome',
       sender: 'assistant',
       headline: 'RetentionAI Copilot Ready',
-      text: "### 👋 Welcome to the **AI Retention Copilot**\n\nI can analyze attrition risk trends across our 1,470 employees, diagnose department burnout, investigate compensation disparities, or draft personalized 1-on-1 retention plans for any team member.\n\n*Select a prompt below or ask any question about your workforce:*",
-      metrics: [
-        { label: "ML Engine", value: "Ensemble v2", badge: "Info" },
-        { label: "Indexed Records", value: "1,470 Staff", badge: "Normal" }
-      ],
+      text: "### AI Retention Copilot\n\nI can analyze attrition risk trends across our 1,470 employees, diagnose department burnout, investigate compensation disparities, or draft personalized 1-on-1 retention plans for any team member.\n\n*Select a prompt below or ask any question about your workforce:*",
       suggestedPrompts: [
         "Show top 5 flight risks across all departments",
         "Why is Sales experiencing high attrition?",
@@ -422,7 +495,7 @@ export default function App() {
         elements.push(<h4 key={index} style={{ fontSize: '0.84rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', margin: '12px 0 6px 0' }}>{formatInline(trimmed.slice(5))}</h4>);
       } else if (trimmed.startsWith('### ')) {
         flushList();
-        elements.push(<h3 key={index} style={{ fontSize: '0.98rem', fontWeight: 700, color: '#a5b4fc', margin: '0 0 10px 0' }}>{formatInline(trimmed.slice(4))}</h3>);
+        elements.push(<h3 key={index} style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-main)', margin: '0 0 10px 0' }}>{formatInline(trimmed.slice(4))}</h3>);
       } else if (/^\d+\.\s/.test(trimmed)) {
         if (currentList.length > 0 && !isOrdered) flushList();
         isOrdered = true;
@@ -731,6 +804,45 @@ export default function App() {
     });
   }, [employees, searchQuery, deptFilter, riskFilter]);
 
+  // Reset directory pagination when filters change
+  useEffect(() => {
+    setDirPage(1);
+  }, [searchQuery, deptFilter, riskFilter]);
+
+  // Paginated employees for directory view
+  const totalDirPages = Math.max(1, Math.ceil(filteredEmployees.length / dirPageSize));
+  const paginatedEmployees = useMemo(() => {
+    const startIndex = (dirPage - 1) * dirPageSize;
+    return filteredEmployees.slice(startIndex, startIndex + dirPageSize);
+  }, [filteredEmployees, dirPage, dirPageSize]);
+
+  // Generate pagination button sequence with ellipsis
+  const getDirPageNumbers = () => {
+    const pages = [];
+    const maxButtons = 5;
+    if (totalDirPages <= maxButtons + 2) {
+      for (let i = 1; i <= totalDirPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      let start = Math.max(2, dirPage - 1);
+      let end = Math.min(totalDirPages - 1, dirPage + 1);
+
+      if (dirPage <= 3) {
+        start = 2;
+        end = 4;
+      } else if (dirPage >= totalDirPages - 2) {
+        start = totalDirPages - 3;
+        end = totalDirPages - 1;
+      }
+
+      if (start > 2) pages.push('ellipsis-start');
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (end < totalDirPages - 1) pages.push('ellipsis-end');
+      pages.push(totalDirPages);
+    }
+    return pages;
+  };
+
   // Computed / Fallback Risk Calculation
   const simulatedRisk = useMemo(() => {
     if (liveSimResult) {
@@ -1023,15 +1135,6 @@ export default function App() {
             </button>
           )}
         </nav>
-
-        {/* Sidebar Footer Info */}
-        <div className="sidebar-footer">
-          <div className="system-health">
-            <div className={`status-indicator ${isBackendConnected ? 'online' : 'demo'}`}></div>
-            <span>{isBackendConnected ? 'FastAPI & ML Active (Port 8000)' : 'FastAPI Local Active'}</span>
-          </div>
-          <div className="version-tag">RetentionAI Platform v2.1 • Multi-Model Ensemble</div>
-        </div>
       </aside>
 
       {/* Main Container */}
@@ -1265,22 +1368,6 @@ export default function App() {
 
         {/* Content Views */}
         <div className="content-body">
-          {/* RBAC Role Context Banner */}
-          <div className="rbac-context-banner">
-            <div className="rbac-banner-left">
-              <div className="rbac-role-pill">
-                <span className="dot" style={{ width: 8, height: 8, borderRadius: '50%', background: '#6366f1' }}></span>
-                <span>Active RBAC Perspective: <strong>{activeRole}</strong> ({currentRoleConfig.badge})</span>
-              </div>
-              <p className="rbac-tagline">{currentRoleConfig.tagline}</p>
-            </div>
-            <div className="rbac-banner-right">
-              <span className="rbac-scope-tag">
-                {currentRoleConfig.allowedTabs.length} Modules Accessible
-              </span>
-            </div>
-          </div>
-          
           {/* TAB 1: EXECUTIVE DASHBOARD */}
           {activeTab === 'dashboard' && (
             <>
@@ -1522,11 +1609,10 @@ export default function App() {
                   {currentRoleConfig.canExportDossier ? (
                     <button 
                       className="btn-primary"
-                      onClick={() => {
-                        showToast('Exporting verified workforce retention dossier (CSV/PDF)...');
-                      }}
+                      onClick={handleExportDossier}
+                      title="Download Full Risk Dossier (CSV)"
                     >
-                      <FileText size={16} />
+                      <Download size={16} />
                       Export Risk Dossier
                     </button>
                   ) : (
@@ -1553,70 +1639,140 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredEmployees.map(emp => (
-                      <tr key={emp.id}>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <img src={emp.avatar} alt={emp.name} style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }} />
-                            <div>
-                              <div style={{ fontWeight: 700 }}>{emp.name}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{emp.id}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <div style={{ fontWeight: 600 }}>{emp.role}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{emp.department}</div>
-                        </td>
-                        <td>
-                          <div>{emp.tenureYears} Years</div>
-                          <div style={{ fontSize: '0.75rem', color: emp.salaryMarketRatio < 0.9 ? '#fb7185' : '#34d399', fontWeight: 600 }}>
-                            ₹{(emp.salary / 100000).toFixed(1)} LPA ({Math.round(emp.salaryMarketRatio * 100)}% market)
-                          </div>
-                        </td>
-                        <td>
-                          <span style={{ fontWeight: 600, color: emp.overtimeHoursMonth > 25 ? '#fb923c' : 'inherit' }}>
-                            {emp.overtimeHoursMonth}h / mo
-                          </span>
-                        </td>
-                        <td>
-                          <div className="driver-tags">
-                            {emp.primaryDrivers.map((driver, i) => (
-                              <span key={i} className="driver-tag">{driver}</span>
-                            ))}
-                          </div>
-                        </td>
-                        <td>
-                          {renderRiskBadge(emp.riskTier, emp.riskScore)}
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            <button 
-                              className="btn-secondary" 
-                              style={{ padding: '6px 10px', fontSize: '0.78rem' }}
-                              onClick={() => {
-                                setSimTargetEmp(emp);
-                                navigateTo('simulator');
-                              }}
-                            >
-                              <Sliders size={14} /> Simulate
-                            </button>
-                            <button 
-                              className="btn-primary" 
-                              style={{ padding: '6px 10px', fontSize: '0.78rem' }}
-                              onClick={() => {
-                                setSelectedEmployee(emp);
-                                setIsModalOpen(true);
-                              }}
-                            >
-                              Details
-                            </button>
-                          </div>
+                    {paginatedEmployees.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" style={{ textAlign: 'center', padding: '36px 20px', color: 'var(--text-muted)' }}>
+                          No personnel matched the active filter criteria.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      paginatedEmployees.map(emp => (
+                        <tr key={emp.id}>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                              <img src={emp.avatar} alt={emp.name} style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }} />
+                              <div>
+                                <div style={{ fontWeight: 700 }}>{emp.name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{emp.id}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 600 }}>{emp.role}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{emp.department}</div>
+                          </td>
+                          <td>
+                            <div>{emp.tenureYears} Years</div>
+                            <div style={{ fontSize: '0.75rem', color: emp.salaryMarketRatio < 0.9 ? '#fb7185' : '#34d399', fontWeight: 600 }}>
+                              ₹{(emp.salary / 100000).toFixed(1)} LPA ({Math.round(emp.salaryMarketRatio * 100)}% market)
+                            </div>
+                          </td>
+                          <td>
+                            <span style={{ fontWeight: 600, color: emp.overtimeHoursMonth > 25 ? '#fb923c' : 'inherit' }}>
+                              {emp.overtimeHoursMonth}h / mo
+                            </span>
+                          </td>
+                          <td>
+                            <div className="driver-tags">
+                              {emp.primaryDrivers.map((driver, i) => (
+                                <span key={i} className="driver-tag">{driver}</span>
+                              ))}
+                            </div>
+                          </td>
+                          <td>
+                            {renderRiskBadge(emp.riskTier, emp.riskScore)}
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button 
+                                className="btn-secondary" 
+                                style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+                                onClick={() => {
+                                  setSimTargetEmp(emp);
+                                  navigateTo('simulator');
+                                }}
+                              >
+                                <Sliders size={14} /> Simulate
+                              </button>
+                              <button 
+                                className="btn-primary" 
+                                style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+                                onClick={() => {
+                                  setSelectedEmployee(emp);
+                                  setIsModalOpen(true);
+                                }}
+                              >
+                                Details
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Interactive Pagination Bar */}
+              <div className="table-pagination-bar">
+                <div className="pagination-info">
+                  <span>
+                    Showing <strong>{filteredEmployees.length === 0 ? 0 : (dirPage - 1) * dirPageSize + 1}</strong>–<strong>{Math.min(dirPage * dirPageSize, filteredEmployees.length)}</strong> of <strong>{filteredEmployees.length}</strong> personnel (5 per page)
+                  </span>
+                </div>
+
+                <div className="pagination-nav">
+                  <button 
+                    className="pagination-btn"
+                    onClick={() => setDirPage(1)}
+                    disabled={dirPage === 1}
+                    title="First Page"
+                  >
+                    <ChevronsLeft size={16} />
+                  </button>
+                  <button 
+                    className="pagination-btn"
+                    onClick={() => setDirPage(prev => Math.max(1, prev - 1))}
+                    disabled={dirPage === 1}
+                    title="Previous Page"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+
+                  <div className="pagination-numbers">
+                    {getDirPageNumbers().map((p, idx) => {
+                      if (typeof p === 'string') {
+                        return <span key={idx} className="pagination-ellipsis">...</span>;
+                      }
+                      return (
+                        <button
+                          key={p}
+                          className={`pagination-num-btn ${p === dirPage ? 'active' : ''}`}
+                          onClick={() => setDirPage(p)}
+                        >
+                          {p}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button 
+                    className="pagination-btn"
+                    onClick={() => setDirPage(prev => Math.min(totalDirPages, prev + 1))}
+                    disabled={dirPage === totalDirPages || filteredEmployees.length === 0}
+                    title="Next Page"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                  <button 
+                    className="pagination-btn"
+                    onClick={() => setDirPage(totalDirPages)}
+                    disabled={dirPage === totalDirPages || filteredEmployees.length === 0}
+                    title="Last Page"
+                  >
+                    <ChevronsRight size={16} />
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -1749,14 +1905,11 @@ export default function App() {
               {/* 3x3 Matrix Grid Container */}
               <div className="matrix-grid-section">
                 <div className="matrix-section-header">
-                  <div>
-                    <h3 style={{ fontSize: '1.15rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <LayoutGrid size={20} className="matrix-header-icon" />
-                      Interactive 9-Box Talent Flight Risk Matrix
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <LayoutGrid size={18} className="matrix-header-icon" />
+                    <h3 style={{ fontSize: '1rem', fontWeight: 800, margin: 0 }}>
+                      9-Box Talent Flight Risk Matrix
                     </h3>
-                    <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-                      Cross-maps Performance & Potential against ML Attrition Risk. Click any quadrant below to inspect individual dossiers and execute 1-click interventions.
-                    </p>
                   </div>
                   <div className="matrix-axis-legend">
                     <div className="matrix-legend-item">
@@ -2069,55 +2222,112 @@ export default function App() {
 
           {/* TAB 5: RETENTION PLAYBOOK */}
           {activeTab === 'playbook' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div className="card-title-row">
-                <div>
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Prescriptive AI Intervention Catalog</h3>
-                  <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                    Standardized, tested retention initiatives ranked by historical retention boost and cost-efficiency.
-                  </p>
+            <div className="playbook-view-layout">
+              {/* Playbook Compact Summary & Filter Header */}
+              <div className="playbook-header-strip">
+                <div className="playbook-summary-metrics">
+                  <div className="playbook-summary-pill">
+                    <Briefcase size={15} color="#818cf8" />
+                    <span>Catalog:</span>
+                    <strong>{RETENTION_PLAYBOOK.length} Policies</strong>
+                  </div>
+                  <div className="playbook-summary-divider" />
+                  <div className="playbook-summary-pill">
+                    <TrendingUp size={15} color="#10b981" />
+                    <span>Max Lift:</span>
+                    <strong style={{ color: '#10b981' }}>+36% Retention</strong>
+                  </div>
+                  <div className="playbook-summary-divider" />
+                  <div className="playbook-summary-pill">
+                    <Clock size={15} color="#f59e0b" />
+                    <span>Velocity:</span>
+                    <strong>1–2 Weeks</strong>
+                  </div>
+                  <div className="playbook-summary-divider" />
+                  <div className="playbook-summary-pill">
+                    <ShieldCheck size={15} color="#3b82f6" />
+                    <span>Coverage:</span>
+                    <strong>100% Risk Factors</strong>
+                  </div>
+                </div>
+
+                <div className="playbook-filter-tabs">
+                  {['All', 'Compensation', 'Work-Life Balance', 'Career Growth', 'Flexibility'].map(cat => {
+                    const count = cat === 'All' 
+                      ? RETENTION_PLAYBOOK.length 
+                      : RETENTION_PLAYBOOK.filter(p => p.category === cat).length;
+                    return (
+                      <button
+                        key={cat}
+                        className={`playbook-tab-btn ${playbookCategoryFilter === cat ? 'active' : ''}`}
+                        onClick={() => setPlaybookCategoryFilter(cat)}
+                      >
+                        {cat} <span className="playbook-tab-count">{count}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
+              {/* Playbook Compact Cards Grid */}
               <div className="playbook-grid">
-                {RETENTION_PLAYBOOK.map(play => (
-                  <div key={play.id} className="playbook-card">
+                {RETENTION_PLAYBOOK
+                  .filter(play => playbookCategoryFilter === 'All' || play.category === playbookCategoryFilter)
+                  .map(play => (
+                  <div key={play.id} className="playbook-card compact">
                     <div className="playbook-header">
-                      <span className="playbook-category">{play.category}</span>
-                      <span className="risk-badge low">Impact: {play.impactScore}/100</span>
+                      <div className="playbook-tags-row">
+                        <span className={`playbook-cat-tag ${play.category.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}>
+                          {play.category}
+                        </span>
+                        <span className="playbook-strat-id">{play.id}</span>
+                      </div>
+                      <span className="playbook-impact-badge">
+                        <Award size={12} /> {play.impactScore}/100 Impact
+                      </span>
                     </div>
 
-                    <h4 style={{ fontSize: '1.05rem', fontWeight: 700 }}>{play.title}</h4>
-                    <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                      {play.description}
-                    </p>
+                    <div className="playbook-body">
+                      <h4 className="playbook-card-title">{play.title}</h4>
+                      <p className="playbook-card-desc">{play.description}</p>
+                    </div>
 
-                    <div className="playbook-metrics-row">
-                      <div className="metric-pill">
-                        <span>Retention Lift</span>
-                        <span style={{ color: '#34d399' }}>{play.estimatedRetentionBoost}</span>
+                    <div className="playbook-metrics-grid compact">
+                      <div className="playbook-metric-item">
+                        <span className="playbook-metric-label">Lift</span>
+                        <span className="playbook-metric-value boost">{play.estimatedRetentionBoost}</span>
                       </div>
-                      <div className="metric-pill">
-                        <span>Avg Cost</span>
-                        <span>{play.avgCostPerEmployee}</span>
+                      <div className="playbook-metric-item">
+                        <span className="playbook-metric-label">Cost/Emp</span>
+                        <span className="playbook-metric-value">{play.avgCostPerEmployee}</span>
                       </div>
-                      <div className="metric-pill">
-                        <span>Target Segment</span>
-                        <span>{play.targetRisk}</span>
+                      <div className="playbook-metric-item">
+                        <span className="playbook-metric-label">Target</span>
+                        <span className="playbook-metric-value" title={play.targetRisk}>{play.targetRisk}</span>
                       </div>
-                      <div className="metric-pill">
-                        <span>Rollout Speed</span>
-                        <span>{play.implementationTime}</span>
+                      <div className="playbook-metric-item">
+                        <span className="playbook-metric-label">Velocity</span>
+                        <span className="playbook-metric-value">{play.implementationTime}</span>
                       </div>
                     </div>
 
-                    <button 
-                      className="btn-primary" 
-                      style={{ marginTop: 8, justifyContent: 'center' }}
-                      onClick={() => showToast(`Initiated automated workflow for ${play.title}`)}
-                    >
-                      <PlayCircle size={16} /> Deploy Strategy
-                    </button>
+                    <div className="playbook-actions-row">
+                      <button 
+                        className="btn-secondary playbook-action-btn"
+                        onClick={() => {
+                          navigateTo('simulator');
+                          showToast(`Opened Simulator to evaluate ${play.title}`);
+                        }}
+                      >
+                        <Sliders size={14} /> Test in Simulator
+                      </button>
+                      <button 
+                        className="btn-primary playbook-action-btn" 
+                        onClick={() => showToast(`Initiated automated rollout workflow for ${play.title}`)}
+                      >
+                        <PlayCircle size={14} /> Deploy Strategy
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -2976,7 +3186,7 @@ export default function App() {
             <div className="copilot-title-text">
               <h3>RetentionAI Copilot</h3>
               <div className="copilot-status-dot">
-                <span>Ensemble ML Online</span>
+                <span>Online</span>
               </div>
             </div>
           </div>
@@ -2990,10 +3200,7 @@ export default function App() {
                     id: 'msg-welcome-reset',
                     sender: 'assistant',
                     headline: 'Conversation Reset',
-                    text: "### 👋 Conversation cleared.\n\nHow can I help you analyze workforce retention, flight risks, or burnout diagnostics today?",
-                    metrics: [
-                      { label: "ML Engine", value: "Ready", badge: "Normal" }
-                    ],
+                    text: "### Conversation Cleared\n\nHow can I help you analyze workforce retention, flight risks, or burnout diagnostics today?",
                     suggestedPrompts: [
                       "Show top 5 flight risks across all departments",
                       "Why is Sales experiencing high attrition?",
@@ -3093,7 +3300,7 @@ export default function App() {
                 {msg.recommendations && msg.recommendations.length > 0 && (
                   <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '10px 12px', margin: '10px 0 6px 0' }}>
                     <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#818cf8', marginBottom: 4 }}>
-                      ⚡ Recommended Next Steps:
+                      Recommended Next Steps:
                     </div>
                     <ul style={{ margin: 0, paddingLeft: 16, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                       {msg.recommendations.map((rec, rIdx) => (
@@ -3171,7 +3378,7 @@ export default function App() {
             </button>
           </div>
           <div className="copilot-hint-text">
-            Press <strong>Enter</strong> to send • Trained on 1,470 employee records
+            Press <strong>Enter</strong> to send
           </div>
         </form>
       </aside>

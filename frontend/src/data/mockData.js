@@ -723,6 +723,28 @@ export const RETENTION_PLAYBOOK = [
     avgCostPerEmployee: "₹50,000",
     implementationTime: "Immediate",
     impactScore: 81
+  },
+  {
+    id: "STRAT-5",
+    title: "Spot Milestone Retention Bonus & RSUs",
+    category: "Compensation",
+    description: "Targeted quarterly milestone retention bonuses for high-impact critical talent.",
+    targetRisk: "Critical Flight Risk",
+    estimatedRetentionBoost: "+36%",
+    avgCostPerEmployee: "₹3,50,000",
+    implementationTime: "1 Week",
+    impactScore: 96
+  },
+  {
+    id: "STRAT-6",
+    title: "Cross-Functional Project Rotation & Upskilling",
+    category: "Career Growth",
+    description: "Structured internal mobility pipeline enabling high-burnout talent to rotate to new strategic initiatives.",
+    targetRisk: "High Promotion Lag",
+    estimatedRetentionBoost: "+24%",
+    avgCostPerEmployee: "₹35,000",
+    implementationTime: "2-3 Weeks",
+    impactScore: 84
   }
 ];
 

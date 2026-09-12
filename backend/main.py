@@ -886,11 +886,11 @@ def copilot_query(req: CopilotRequest):
         cost_formatted = f"₹{(replacement_cost / 100000):.1f} Lakhs"
 
         answer = (
-            f"### 📋 Diagnostic & Retention Blueprint for **{emp['name']}** ({emp['id']})\n\n"
+            f"### Diagnostic & Retention Blueprint for **{emp['name']}** ({emp['id']})\n\n"
             f"**Current Status:** {emp['role']} in **{emp['department']}** | Risk Score: **{emp['riskScore']}% ({emp['riskTier']})**\n\n"
-            f"#### 🔍 Key Risk Drivers Identified:\n"
+            f"#### Key Risk Drivers Identified:\n"
             + "".join([f"- **{d}**: Impacting engagement and flight probability.\n" for d in emp['primaryDrivers']]) +
-            f"\n#### 💡 Prescriptive 1-on-1 Action Plan:\n"
+            f"\n#### Prescriptive 1-on-1 Action Plan:\n"
             f"1. **Compensation Alignment:** Evaluate a **+{10 if emp['riskScore'] > 75 else 6}% merit increment** to bring salary closer to benchmark (Current Market Ratio: {emp['salaryMarketRatio']}x).\n"
             f"2. **Workload & Burnout Relief:** {'Cap monthly overtime to under 15 hours.' if emp['overtimeHoursMonth'] > 20 else 'Introduce 1 additional remote day weekly.'}\n"
             f"3. **Career Trajectory Check-in:** Schedule a dedicated growth discussion addressing the {emp['lastPromotionMonths']} months since last title milestone.\n\n"
@@ -942,13 +942,13 @@ def copilot_query(req: CopilotRequest):
         promo_lag_count = sum(1 for e in dept_emps if e['lastPromotionMonths'] >= 36)
 
         answer = (
-            f"### 🏢 Department Deep-Dive: **{matched_dept}**\n\n"
+            f"### Department Deep-Dive: **{matched_dept}**\n\n"
             f"**Department Summary:** {len(dept_emps)} Total Employees | **{len(dept_critical)} At-Risk ({round((len(dept_critical)/len(dept_emps))*100, 1)}%)** | Avg Risk: **{dept_avg_risk}%**\n\n"
-            f"#### ⚠️ Primary Departmental Stressors:\n"
+            f"#### Primary Departmental Stressors:\n"
             f"- **Overtime & Workload Strain:** {overtime_count} team members ({round(overtime_count/len(dept_emps)*100)}%) log >20 hrs of monthly overtime.\n"
             f"- **Promotion Bottleneck:** {promo_lag_count} team members have waited ≥3 years for their last promotion.\n"
             f"- **Key Flight Risks:** The top 3 individuals at immediate flight risk are {', '.join([e['name'] for e in dept_critical[:3]])}.\n\n"
-            f"#### 🎯 Prescriptive Departmental Recommendations:\n"
+            f"#### Prescriptive Departmental Recommendations:\n"
             f"1. Implement a departmental overtime cap to mitigate burnout velocity.\n"
             f"2. Conduct an off-cycle merit & leveling audit for mid-level roles.\n"
             f"3. Fast-track leadership check-ins for the top {min(5, len(dept_critical))} critical talent profiles."
@@ -984,11 +984,11 @@ def copilot_query(req: CopilotRequest):
         ot_risks.sort(key=lambda x: x['riskScore'], reverse=True)
 
         answer = (
-            f"### 🔥 Burnout & Overtime Risk Analysis\n\n"
+            f"### Burnout & Overtime Risk Analysis\n\n"
             f"Identified **{len(ot_risks)} high-risk employees** currently logging excessive monthly overtime (>20 hrs/mo).\n\n"
-            f"#### 🚨 Most Vulnerable Personnel:\n"
+            f"#### Most Vulnerable Personnel:\n"
             + "".join([f"- **{e['name']}** ({e['role']}, {e['department']}) – Risk: **{e['riskScore']}%**, {e['overtimeHoursMonth']} hrs overtime.\n" for e in ot_risks[:4]]) +
-            f"\n#### 🛠️ Recommended Interventions:\n"
+            f"\n#### Recommended Interventions:\n"
             f"1. Cap overtime hours to ≤12 hrs/month per employee.\n"
             f"2. Add 2 hybrid/remote flex days per week to restore work-life balance.\n"
             f"3. Simulating an overtime reduction to 10 hrs reduces average risk across this cohort by **18-24 percentage points**."
@@ -1023,11 +1023,11 @@ def copilot_query(req: CopilotRequest):
         promo_risks.sort(key=lambda x: x['riskScore'], reverse=True)
 
         answer = (
-            f"### ⏳ Promotion Lag & Career Progression Bottleneck\n\n"
+            f"### Promotion Lag & Career Progression Bottleneck\n\n"
             f"Found **{len(promo_risks)} key employees** who have gone **≥3 years without a title advancement or promotion** while exhibiting elevated flight risk.\n\n"
-            f"#### 🚨 Top Personnel Affected:\n"
+            f"#### Top Personnel Affected:\n"
             + "".join([f"- **{e['name']}** ({e['role']}) – **{e['lastPromotionMonths']} months** since last promotion (Risk: **{e['riskScore']}%**).\n" for e in promo_risks[:4]]) +
-            f"\n#### 📈 Recommended Actions:\n"
+            f"\n#### Recommended Actions:\n"
             f"1. Conduct fast-track promotion eligibility reviews during the upcoming quarterly cycle.\n"
             f"2. Simulating a fast-track promotion drops flight probability by **~14 percentage points** on average."
         )
@@ -1059,10 +1059,10 @@ def copilot_query(req: CopilotRequest):
         top_risks = sorted(cached_scored_employees, key=lambda x: x['riskScore'], reverse=True)[:5]
         
         answer = (
-            f"### 🚨 Top 5 Flight-Risk Employees Identified by AI\n\n"
+            f"### Top 5 Flight-Risk Employees Identified by AI\n\n"
             f"The soft-voting ensemble ML model has isolated the highest-priority workforce flight risks requiring urgent HR attention:\n\n"
             + "".join([f"1. **{e['name']}** ({e['role']}, {e['department']}) – Risk: **{e['riskScore']}% ({e['riskTier']})** | Primary: *{e['primaryDrivers'][0]}*\n" for e in top_risks]) +
-            f"\n#### ⚡ Immediate Next Steps:\n"
+            f"\n#### Immediate Next Steps:\n"
             f"- Open each profile in the **Employee Explorer** or **What-If Simulator**.\n"
             f"- Apply targeted retention levers (merit raise + overtime reduction) to protect institutional knowledge."
         )
@@ -1093,13 +1093,13 @@ def copilot_query(req: CopilotRequest):
     # Scenario F: General Executive Summary / Default Reasoning
     cost_cr = sum(int(e['salary'] * 1.5 * (e['riskScore'] / 100)) for e in at_risk) / 10000000.0
     answer = (
-        f"### 🌐 Executive Workforce Retention Intelligence\n\n"
+        f"### Executive Workforce Retention Intelligence\n\n"
         f"**RetentionAI Champion Model Diagnostics:**\n"
         f"- **Workforce Size:** {total:,} employees across Sales, R&D, and HR.\n"
         f"- **Predicted Attrition Rate:** **{avg_risk}%** company-wide baseline.\n"
         f"- **Critical & High Flight Risks:** **{len(at_risk)} employees** ({round(len(at_risk)/total*100, 1)}% of workforce).\n"
         f"- **Financial Cost at Risk:** **₹{cost_cr:.2f} Crores** in projected replacement, recruiting, and lost productivity costs.\n\n"
-        f"#### 🎯 Strategic Levers with Highest ROI:\n"
+        f"#### Strategic Levers with Highest ROI:\n"
         f"1. **Targeted Merit Adjustments:** 8-12% salary correction for top performers with below-market comp ratio yields a **3.8x - 4.8x ROI**.\n"
         f"2. **Overtime Guardrails:** Capping monthly overtime below 15 hours slashes immediate burnout flight probability by ~20%.\n"
         f"3. **Promotion Velocity:** Resolving 3+ year promotion stagnation delivers a 14% risk drop."
