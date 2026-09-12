@@ -281,7 +281,7 @@ def get_talent_matrix(department: Optional[str] = None):
         ("High", "High"): {
             "id": "high_perf_high_risk",
             "row": 0, "col": 2,
-            "title": "⭐ Critical Stars at Risk",
+            "title": "Critical Stars at Risk",
             "tagline": "Top Performers with Urgent Flight Probability",
             "priority": "Urgent Priority",
             "badgeColor": "critical",
@@ -290,7 +290,7 @@ def get_talent_matrix(department: Optional[str] = None):
         ("High", "Medium"): {
             "id": "high_perf_med_risk",
             "row": 0, "col": 1,
-            "title": "🚀 High Potentials Under Strain",
+            "title": "High Potentials Under Strain",
             "tagline": "Star Contributors Showing Early Burnout Indicators",
             "priority": "High Priority",
             "badgeColor": "warning",
@@ -299,7 +299,7 @@ def get_talent_matrix(department: Optional[str] = None):
         ("High", "Low"): {
             "id": "high_perf_low_risk",
             "row": 0, "col": 0,
-            "title": "💎 Star Anchors",
+            "title": "Star Anchors",
             "tagline": "High Performing, Highly Engaged Core Pillars",
             "priority": "Benchmark Cohort",
             "badgeColor": "success",
@@ -308,7 +308,7 @@ def get_talent_matrix(department: Optional[str] = None):
         ("Medium", "High"): {
             "id": "med_perf_high_risk",
             "row": 1, "col": 2,
-            "title": "⚡ Solid Contributors at Risk",
+            "title": "Solid Contributors at Risk",
             "tagline": "Consistent Performers with Flight Risk",
             "priority": "Elevated",
             "badgeColor": "high",
@@ -317,7 +317,7 @@ def get_talent_matrix(department: Optional[str] = None):
         ("Medium", "Medium"): {
             "id": "med_perf_med_risk",
             "row": 1, "col": 1,
-            "title": "🛡️ Core Steady Workforce",
+            "title": "Core Steady Workforce",
             "tagline": "Reliable Backbone with Moderate Vulnerability",
             "priority": "Stable Monitoring",
             "badgeColor": "medium",
@@ -326,7 +326,7 @@ def get_talent_matrix(department: Optional[str] = None):
         ("Medium", "Low"): {
             "id": "med_perf_low_risk",
             "row": 1, "col": 0,
-            "title": "🌱 Solid Foundation",
+            "title": "Solid Foundation",
             "tagline": "Dependable Contributors with High Loyalty",
             "priority": "Healthy",
             "badgeColor": "normal",
@@ -335,7 +335,7 @@ def get_talent_matrix(department: Optional[str] = None):
         ("Low", "High"): {
             "id": "low_perf_high_risk",
             "row": 2, "col": 2,
-            "title": "⚠️ Low Engagement Flight Risks",
+            "title": "Low Engagement Flight Risks",
             "tagline": "Underperforming Personnel Actively Disengaging",
             "priority": "Action Required",
             "badgeColor": "critical",
@@ -344,7 +344,7 @@ def get_talent_matrix(department: Optional[str] = None):
         ("Low", "Medium"): {
             "id": "low_perf_med_risk",
             "row": 2, "col": 1,
-            "title": "📉 Disengaged Talent Cohort",
+            "title": "Disengaged Talent Cohort",
             "tagline": "Developing Contributors Needing Guidance",
             "priority": "Coaching",
             "badgeColor": "warning",
@@ -353,7 +353,7 @@ def get_talent_matrix(department: Optional[str] = None):
         ("Low", "Low"): {
             "id": "low_perf_low_risk",
             "row": 2, "col": 0,
-            "title": "🎯 Stable Developing Personnel",
+            "title": "Stable Developing Personnel",
             "tagline": "Loyal Employees Needing Capability Building",
             "priority": "Development",
             "badgeColor": "normal",

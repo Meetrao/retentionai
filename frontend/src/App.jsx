@@ -1696,21 +1696,21 @@ export default function App() {
               {/* Matrix Top Summary KPI Bar */}
               <div className="matrix-kpi-banner">
                 <div className="matrix-kpi-card urgent">
-                  <div className="matrix-kpi-icon-wrap">
-                    <Target size={22} color="#fb7185" />
+                  <div className="matrix-kpi-icon-wrap urgent-icon">
+                    <Target size={22} />
                   </div>
                   <div className="matrix-kpi-details">
                     <div className="matrix-kpi-num">
                       {matrixData?.urgentHeadcount ?? 105}
                     </div>
-                    <div className="matrix-kpi-lbl">⭐ Stars at Urgent Flight Risk</div>
+                    <div className="matrix-kpi-lbl">Stars at Urgent Flight Risk</div>
                     <div className="matrix-kpi-sub">Immediate Retention Levers Needed</div>
                   </div>
                 </div>
 
                 <div className="matrix-kpi-card exposure">
-                  <div className="matrix-kpi-icon-wrap">
-                    <IndianRupee size={22} color="#fb923c" />
+                  <div className="matrix-kpi-icon-wrap exposure-icon">
+                    <IndianRupee size={22} />
                   </div>
                   <div className="matrix-kpi-details">
                     <div className="matrix-kpi-num">
@@ -1722,14 +1722,14 @@ export default function App() {
                 </div>
 
                 <div className="matrix-kpi-card safe">
-                  <div className="matrix-kpi-icon-wrap">
-                    <ShieldCheck size={22} color="#34d399" />
+                  <div className="matrix-kpi-icon-wrap safe-icon">
+                    <ShieldCheck size={22} />
                   </div>
                   <div className="matrix-kpi-details">
                     <div className="matrix-kpi-num">
                       {matrixData?.quadrants?.find(q => q.id === 'high_perf_low_risk')?.count ?? 741}
                     </div>
-                    <div className="matrix-kpi-lbl">💎 Star Anchors (Low Risk)</div>
+                    <div className="matrix-kpi-lbl">Star Anchors (Low Risk)</div>
                     <div className="matrix-kpi-sub">High Performers with High Loyalty</div>
                   </div>
                 </div>
@@ -1737,17 +1737,30 @@ export default function App() {
                 {/* Department Filter Controls */}
                 <div className="matrix-kpi-card filter-card">
                   <div className="filter-card-header">
-                    <Filter size={15} color="#818cf8" />
-                    <span>Department Scope</span>
+                    <div className="filter-header-left">
+                      <Filter size={14} className="filter-icon" />
+                      <span>Department Scope</span>
+                    </div>
+                    <span className="filter-active-label">
+                      {matrixDeptFilter === 'All' ? '1,470 Records' : matrixDeptFilter === 'Research & Development' ? '961 Records' : matrixDeptFilter === 'Sales' ? '446 Records' : '63 Records'}
+                    </span>
                   </div>
-                  <div className="matrix-dept-pills">
-                    {['All', 'Sales', 'Research & Development', 'Human Resources'].map((dept) => (
+                  <div className="matrix-dept-pills-grid">
+                    {[
+                      { id: 'All', label: 'All', count: '1,470' },
+                      { id: 'Sales', label: 'Sales', count: '446' },
+                      { id: 'Research & Development', label: 'R&D', count: '961' },
+                      { id: 'Human Resources', label: 'HR', count: '63' }
+                    ].map(({ id, label, count }) => (
                       <button 
-                        key={dept}
-                        className={`matrix-dept-pill ${matrixDeptFilter === dept ? 'active' : ''}`}
-                        onClick={() => setMatrixDeptFilter(dept)}
+                        key={id}
+                        type="button"
+                        className={`matrix-dept-segment-btn ${matrixDeptFilter === id ? 'active' : ''}`}
+                        onClick={() => setMatrixDeptFilter(id)}
+                        title={`Filter by ${id} (${count} employees)`}
                       >
-                        {dept === 'Research & Development' ? 'R&D' : dept === 'Human Resources' ? 'HR' : dept}
+                        <span className="btn-dept-name">{label}</span>
+                        <span className="btn-dept-count">{count}</span>
                       </button>
                     ))}
                   </div>
@@ -1759,7 +1772,7 @@ export default function App() {
                 <div className="matrix-section-header">
                   <div>
                     <h3 style={{ fontSize: '1.15rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <LayoutGrid size={20} color="#6366f1" />
+                      <LayoutGrid size={20} className="matrix-header-icon" />
                       Interactive 9-Box Talent Flight Risk Matrix
                     </h3>
                     <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
@@ -1768,24 +1781,28 @@ export default function App() {
                   </div>
                   <div className="matrix-axis-legend">
                     <div className="matrix-legend-item">
-                      <span className="dot" style={{ background: '#f43f5e' }}></span>
+                      <span className="dot dot-urgent"></span>
                       <span>Urgent Flight Risk</span>
                     </div>
                     <div className="matrix-legend-item">
-                      <span className="dot" style={{ background: '#eab308' }}></span>
+                      <span className="dot dot-warning"></span>
                       <span>Moderate / Under Strain</span>
                     </div>
                     <div className="matrix-legend-item">
-                      <span className="dot" style={{ background: '#10b981' }}></span>
+                      <span className="dot dot-safe"></span>
                       <span>Safe / High Stability</span>
                     </div>
                   </div>
                 </div>
 
-                {/* 3x3 Grid Wrapper with Axis Labels */}
-                <div className="matrix-grid-wrapper">
-                  {/* Top Column Labels (Risk Axis) */}
-                  <div className="matrix-col-headers">
+                {/* 3x3 Grid Canvas with 2D Row and Column Headers */}
+                <div className="matrix-canvas-wrapper">
+                  {/* Top Column Labels (X-Axis: Flight Risk) */}
+                  <div className="matrix-canvas-header">
+                    <div className="matrix-axis-corner">
+                      <span className="corner-y">Performance ↑</span>
+                      <span className="corner-x">Risk →</span>
+                    </div>
                     <div className="matrix-col-title low">
                       <span>Low Flight Risk (&lt;35%)</span>
                       <small>Stable & Retained</small>
@@ -1800,45 +1817,62 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* 3x3 Quadrant Grid */}
-                  <div className="matrix-3x3-grid">
-                    {(matrixData?.quadrants || []).map((q) => {
-                      const isSelected = selectedQuadrantId === q.id;
+                  {/* Matrix Rows (Y-Axis: Performance) */}
+                  <div className="matrix-rows-container">
+                    {[
+                      { rowIdx: 0, perfName: 'High Performance', perfSub: 'Exceeds Expectations', perfClass: 'high-perf' },
+                      { rowIdx: 1, perfName: 'Core Performance', perfSub: 'Meets Expectations', perfClass: 'med-perf' },
+                      { rowIdx: 2, perfName: 'Developing', perfSub: 'Growth & Coaching', perfClass: 'low-perf' },
+                    ].map(({ rowIdx, perfName, perfSub, perfClass }) => {
+                      const rowQuadrants = (matrixData?.quadrants || []).filter(q => q.row === rowIdx);
                       return (
-                        <div 
-                          key={q.id}
-                          className={`matrix-quadrant-card ${q.badgeColor} ${isSelected ? 'selected' : ''}`}
-                          onClick={() => setSelectedQuadrantId(q.id)}
-                        >
-                          <div className="quadrant-header">
-                            <span className="quadrant-title">{q.title}</span>
-                            <span className={`quadrant-priority-tag ${q.badgeColor}`}>
-                              {q.priority}
-                            </span>
+                        <div key={rowIdx} className="matrix-canvas-row">
+                          <div className={`matrix-row-header ${perfClass}`}>
+                            <span className="row-perf-title">{perfName}</span>
+                            <small className="row-perf-sub">{perfSub}</small>
                           </div>
+                          <div className="matrix-row-cards">
+                            {rowQuadrants.map((q) => {
+                              const isSelected = selectedQuadrantId === q.id;
+                              return (
+                                <div 
+                                  key={q.id}
+                                  className={`matrix-quadrant-card ${q.badgeColor} ${isSelected ? 'selected' : ''}`}
+                                  onClick={() => setSelectedQuadrantId(q.id)}
+                                >
+                                  <div className="quadrant-header">
+                                    <span className="quadrant-title">{q.title}</span>
+                                    <span className={`quadrant-priority-tag ${q.badgeColor}`}>
+                                      {q.priority}
+                                    </span>
+                                  </div>
 
-                          <p className="quadrant-tagline">{q.tagline}</p>
+                                  <p className="quadrant-tagline">{q.tagline}</p>
 
-                          <div className="quadrant-stats-row">
-                            <div className="quadrant-headcount-box">
-                              <span className="quadrant-count">{q.count}</span>
-                              <span className="quadrant-pct">{q.percentage}% of workforce</span>
-                            </div>
-                            <div className="quadrant-cost-box">
-                              <span className="quadrant-cost">{q.costFormatted}</span>
-                              <span className="quadrant-cost-lbl">Exposure</span>
-                            </div>
-                          </div>
+                                  <div className="quadrant-stats-row">
+                                    <div className="quadrant-headcount-box">
+                                      <span className="quadrant-count">{q.count}</span>
+                                      <span className="quadrant-pct">{q.percentage}% workforce</span>
+                                    </div>
+                                    <div className="quadrant-cost-box">
+                                      <span className="quadrant-cost">{q.costFormatted}</span>
+                                      <span className="quadrant-cost-lbl">Exposure</span>
+                                    </div>
+                                  </div>
 
-                          <div className="quadrant-meter-track">
-                            <div 
-                              className={`quadrant-meter-fill ${q.badgeColor}`}
-                              style={{ width: `${Math.min(100, q.percentage * 2)}%` }}
-                            />
-                          </div>
+                                  <div className="quadrant-meter-track">
+                                    <div 
+                                      className={`quadrant-meter-fill ${q.badgeColor}`}
+                                      style={{ width: `${Math.min(100, Math.max(12, q.percentage * 2.2))}%` }}
+                                    />
+                                  </div>
 
-                          <div className="quadrant-footer-hint">
-                            <span>{isSelected ? '✓ Selected Quadrant' : 'Click to inspect cohort →'}</span>
+                                  <div className="quadrant-footer-hint">
+                                    <span>{isSelected ? '✓ Selected Cohort' : 'Inspect cohort →'}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       );
