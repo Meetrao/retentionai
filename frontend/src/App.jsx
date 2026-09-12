@@ -1047,28 +1047,6 @@ export default function App() {
               {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
             <div className="header-left">
-              <div className="breadcrumb-bar">
-                <span 
-                  onClick={() => navigateTo(currentRoleConfig.defaultTab)} 
-                  style={{ cursor: 'pointer', transition: 'color 0.2s' }}
-                  title="Go to Default View"
-                >
-                  RetentionAI
-                </span>
-                <ChevronRight size={12} />
-                <span className="breadcrumb-role">{activeRole}</span>
-                <ChevronRight size={12} />
-                <span className="active">
-                  {activeTab === 'dashboard' && 'Executive Dashboard'}
-                  {activeTab === 'directory' && (activeRole === 'Team Lead' ? 'Team Risk Explorer' : activeRole === 'Data Analyst' ? 'Diagnostic Records' : 'Flight Risk Explorer')}
-                  {activeTab === 'departments' && 'Department Intelligence'}
-                  {activeTab === 'matrix' && 'Talent Retention 9-Box Matrix'}
-                  {activeTab === 'simulator' && 'What-If Simulation'}
-                  {activeTab === 'playbook' && 'Retention Strategy Catalog'}
-                  {activeTab === 'interventions' && (activeRole === 'Team Lead' ? 'Propose Retention Plan' : 'Intervention Tracker & ROI')}
-                  {activeTab === 'models' && 'Champion ML Architecture & Benchmarks'}
-                </span>
-              </div>
               <h2 className="page-title">
                 {activeTab === 'dashboard' && 'Workforce Attrition Overview'}
                 {activeTab === 'directory' && (activeRole === 'Team Lead' ? 'Team Member Risk Assessment' : activeRole === 'Data Analyst' ? 'Model Test Sample Diagnostics' : 'Employee Risk Explorer')}
