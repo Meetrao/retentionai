@@ -262,7 +262,9 @@ export default function App() {
       riskBefore: 88,
       riskAfter: 42,
       date: "Today",
-      status: "Approved"
+      status: "Approved",
+      roiMultiplier: "4.8x",
+      grossRoiMultiplier: "12.0x"
     },
     {
       id: "INT-102",
@@ -275,7 +277,9 @@ export default function App() {
       riskBefore: 76,
       riskAfter: 35,
       date: "Yesterday",
-      status: "In Progress"
+      status: "In Progress",
+      roiMultiplier: "4.1x",
+      grossRoiMultiplier: "10.0x"
     }
   ]);
 
@@ -1203,7 +1207,15 @@ export default function App() {
       }
     } catch (e) {
       // Offline fallback commitment
-      const simulatedScore = Math.max(6, simTargetEmp.riskScore - 35);
+      const simulatedScore = simulatedRisk.score;
+      const packageCost = Math.round(simTargetEmp.salary * (simSalaryDelta / 100) + simBonusAmount);
+      const replacementCost = Math.round(simTargetEmp.salary * 1.5);
+      const deltaRisk = Math.max(0, simTargetEmp.riskScore - simulatedScore);
+      const expectedSavings = Math.round(replacementCost * (deltaRisk / 100));
+      const effCost = packageCost > 0 ? packageCost : 50000;
+      const dynamicRoi = `${(expectedSavings / effCost).toFixed(1)}x`;
+      const dynamicGross = `${(replacementCost / effCost).toFixed(1)}x`;
+
       const fallbackRecord = {
         id: `INT-${100 + committedPlans.length + 1}`,
         empId: simTargetEmp.id,
@@ -1211,12 +1223,13 @@ export default function App() {
         department: simTargetEmp.department,
         role: simTargetEmp.role,
         action: `+${simSalaryDelta}% Merit Raise, ${simOvertimeHours}h OT Cap, ${simRemoteDays} Remote Days`,
-        costInr: Math.round(simTargetEmp.salary * (simSalaryDelta / 100) + simBonusAmount),
+        costInr: packageCost,
         riskBefore: simTargetEmp.riskScore,
         riskAfter: simulatedScore,
         date: "Just now",
         status: "Approved",
-        roiMultiplier: "4.2x",
+        roiMultiplier: dynamicRoi,
+        grossRoiMultiplier: dynamicGross,
         notes: "Committed retention package via What-If simulator."
       };
       setCommittedPlans(prev => [fallbackRecord, ...prev]);
@@ -1419,14 +1432,25 @@ export default function App() {
   // Computed / Fallback Risk Calculation
   const simulatedRisk = useMemo(() => {
     if (liveSimResult) {
+      const packageCost = liveSimResult.package_cost_inr !== undefined ? liveSimResult.package_cost_inr : (Math.round((simTargetEmp?.salary || 0) * (simSalaryDelta / 100)) + simBonusAmount);
+      const replacementCost = liveSimResult.full_replacement_cost_inr || Math.round((simTargetEmp?.salary || 0) * 1.5);
+      const costSavings = liveSimResult.replacement_cost_avoided_inr;
+      const effCost = packageCost > 0 ? packageCost : 50000;
+      const grossMultiple = liveSimResult.gross_roi_multiplier ? liveSimResult.gross_roi_multiplier.replace('x', '') : (replacementCost / effCost).toFixed(1);
+      const riskAdjustedRoi = liveSimResult.roi_multiplier || `${(costSavings / effCost).toFixed(1)}x`;
+
       return {
         score: liveSimResult.simulated_risk_score,
         tier: liveSimResult.simulated_risk_tier,
         delta: liveSimResult.risk_reduced_points,
-        costSavings: liveSimResult.replacement_cost_avoided_inr
+        costSavings,
+        replacementCost,
+        packageCost,
+        grossMultiple,
+        riskAdjustedRoi: typeof riskAdjustedRoi === 'string' && riskAdjustedRoi.endsWith('x') ? riskAdjustedRoi : `${riskAdjustedRoi}x`
       };
     }
-    if (!simTargetEmp) return { score: 50, tier: 'Medium', costSavings: 0, delta: 0 };
+    if (!simTargetEmp) return { score: 50, tier: 'Medium', costSavings: 0, delta: 0, replacementCost: 0, packageCost: 0, grossMultiple: '0.0', riskAdjustedRoi: '0.0x' };
     
     let baseScore = simTargetEmp.riskScore;
     const salaryImpact = (simSalaryDelta - 0) * 1.8;
@@ -1446,13 +1470,22 @@ export default function App() {
     else if (computedScore >= 35) tier = 'Medium';
 
     const replacementCost = Math.round(simTargetEmp.salary * 1.5);
-    const costSavings = Math.round(replacementCost * ((baseScore - computedScore) / 100));
+    const deltaRisk = Math.max(0, baseScore - computedScore);
+    const costSavings = Math.round(replacementCost * (deltaRisk / 100));
+    const rawPackageCost = Math.round(simTargetEmp.salary * (simSalaryDelta / 100)) + simBonusAmount;
+    const effCost = rawPackageCost > 0 ? rawPackageCost : 50000;
+    const grossMultiple = (replacementCost / effCost).toFixed(1);
+    const riskAdjustedRoi = `${(costSavings / effCost).toFixed(1)}x`;
 
     return {
       score: computedScore,
       tier,
-      delta: Math.max(0, baseScore - computedScore),
-      costSavings
+      delta: deltaRisk,
+      costSavings,
+      replacementCost,
+      packageCost: rawPackageCost,
+      grossMultiple,
+      riskAdjustedRoi
     };
   }, [liveSimResult, simTargetEmp, simSalaryDelta, simOvertimeHours, simRemoteDays, simPromotionStatus, simBonusAmount]);
 
@@ -3045,23 +3078,59 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Economic ROI Impact */}
-                <div style={{ background: 'var(--bg-input)', padding: 18, borderRadius: 14, border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Estimated Replacement Cost Avoided:</span>
-                    <span style={{ fontWeight: 800, color: '#34d399' }}>+₹{simulatedRisk.costSavings.toLocaleString('en-IN')}</span>
+                {/* Economic ROI Impact & Reconciliation */}
+                <div style={{ background: 'var(--bg-input)', padding: 18, borderRadius: 14, border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 8 }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Financial Impact & ROI Reconciled
+                    </span>
+                    <span style={{ fontSize: '0.72rem', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', padding: '2px 8px', borderRadius: 999, fontWeight: 600 }}>
+                      Empirical Math Reconciled
+                    </span>
                   </div>
+
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Calculated Package Cost:</span>
-                    <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Full Replacement Cost (1.5× CTC):</span>
+                    <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>₹{(simulatedRisk.replacementCost || Math.round((simTargetEmp?.salary || 0) * 1.5)).toLocaleString('en-IN')}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Calculated Package Budget (Cost):</span>
+                    <span style={{ fontWeight: 700, color: '#38bdf8' }}>
                       ₹{(Math.round((simTargetEmp?.salary || 0) * (simSalaryDelta / 100)) + simBonusAmount).toLocaleString('en-IN')}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', borderTop: '1px solid var(--border-subtle)', paddingTop: 8 }}>
-                    <span style={{ fontWeight: 700 }}>Net Estimated Retention ROI:</span>
-                    <span style={{ fontWeight: 800, color: '#6366f1' }}>
-                      {simRiskDelta > 15 ? '3.4x Payoff' : '1.8x Payoff'}
-                    </span>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)' }}>Risk-Adjusted Expected Loss Avoided:</span>
+                      <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                        (Δ{simRiskDelta}% Risk Drop × ₹{(simulatedRisk.replacementCost || 0).toLocaleString('en-IN')})
+                      </div>
+                    </div>
+                    <span style={{ fontWeight: 800, color: '#34d399', alignSelf: 'center' }}>+₹{simulatedRisk.costSavings.toLocaleString('en-IN')}</span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, borderTop: '1px solid var(--border-subtle)', paddingTop: 10, marginTop: 2 }}>
+                    <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border-subtle)' }}>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Gross Benefit Multiple</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#a78bfa', marginTop: 2 }}>
+                        {simulatedRisk.grossMultiple || '12.0'}×
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: 2 }}>
+                        Full Replacement ÷ Cost
+                      </div>
+                    </div>
+
+                    <div style={{ background: 'rgba(99, 102, 241, 0.08)', padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(99, 102, 241, 0.3)' }}>
+                      <div style={{ fontSize: '0.72rem', color: '#818cf8', textTransform: 'uppercase', fontWeight: 700 }}>Risk-Adjusted ROI</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#34d399', marginTop: 2 }}>
+                        {simulatedRisk.riskAdjustedRoi || '4.8x'}
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: 2 }}>
+                        Loss Avoided ÷ Cost
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -3233,6 +3302,7 @@ export default function App() {
                       <th>Intervention Action</th>
                       <th>Package Budget</th>
                       <th>Risk Before → After</th>
+                      <th>Expected ROI</th>
                       <th>Status</th>
                     </tr>
                   </thead>
@@ -3260,6 +3330,24 @@ export default function App() {
                           <span style={{ color: '#fb7185', fontWeight: 700 }}>{plan.riskBefore}%</span>
                           <span style={{ margin: '0 6px', color: 'var(--text-muted)' }}>&rarr;</span>
                           <span style={{ color: '#34d399', fontWeight: 800 }}>{plan.riskAfter}%</span>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <span style={{ 
+                              fontWeight: 800, 
+                              color: '#34d399', 
+                              background: 'rgba(52, 211, 153, 0.1)', 
+                              padding: '2px 8px', 
+                              borderRadius: 6, 
+                              fontSize: '0.82rem',
+                              width: 'fit-content'
+                            }}>
+                              {plan.roiMultiplier || '4.8x'}
+                            </span>
+                            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                              Gross: {plan.grossRoiMultiplier || '12.0x'}
+                            </span>
+                          </div>
                         </td>
                         <td>
                           <span className="risk-badge low">

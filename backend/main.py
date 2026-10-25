@@ -580,16 +580,24 @@ def simulate_retention_intervention(req: SimulationRequest):
         tier = "Low"
 
     replacement_cost = int(emp['salary'] * 1.5)
-    cost_savings = int(replacement_cost * ((base_score - simulated_score) / 100.0))
+    delta_risk = max(0, base_score - simulated_score)
+    cost_savings = int(replacement_cost * (delta_risk / 100.0))
+    package_cost = int(emp['salary'] * (req.salary_delta_pct / 100.0) + req.bonus_inr)
+    eff_cost = package_cost if package_cost > 0 else 50000
+    risk_adjusted_roi = round(cost_savings / eff_cost, 1)
+    gross_roi = round(replacement_cost / eff_cost, 1)
 
     return {
         "employee_id": req.employee_id,
         "base_risk_score": base_score,
         "simulated_risk_score": simulated_score,
         "simulated_risk_tier": tier,
-        "risk_reduced_points": max(0, base_score - simulated_score),
+        "risk_reduced_points": delta_risk,
+        "full_replacement_cost_inr": replacement_cost,
         "replacement_cost_avoided_inr": cost_savings,
-        "roi_multiplier": "3.4x" if (base_score - simulated_score) > 15 else "1.8x"
+        "package_cost_inr": package_cost,
+        "roi_multiplier": f"{risk_adjusted_roi}x",
+        "gross_roi_multiplier": f"{gross_roi}x"
     }
 
 
@@ -607,7 +615,8 @@ cached_interventions = [
         "riskAfter": 38,
         "date": "Today",
         "status": "Approved",
-        "roiMultiplier": "4.2x",
+        "roiMultiplier": "4.8x",
+        "grossRoiMultiplier": "12.0x",
         "notes": "Fast-tracked retention package approved to prevent key account disruption."
     },
     {
@@ -622,7 +631,8 @@ cached_interventions = [
         "riskAfter": 35,
         "date": "Yesterday",
         "status": "In Progress",
-        "roiMultiplier": "3.8x",
+        "roiMultiplier": "4.1x",
+        "grossRoiMultiplier": "10.0x",
         "notes": "Promotion to Senior Scientist scheduled for next sprint cycle."
     }
 ]
@@ -694,6 +704,13 @@ def commit_intervention(req: CommitInterventionRequest):
 
     action_summary = req.action_summary or (", ".join(actions) if actions else "Custom Retention Policy")
     
+    replacement_cost = int(emp['salary'] * 1.5)
+    delta_risk = max(0, base_score - simulated_score)
+    expected_savings = int(replacement_cost * (delta_risk / 100.0))
+    eff_cost = total_cost if total_cost > 0 else 50000
+    computed_roi = round(expected_savings / eff_cost, 1)
+    gross_roi = round(replacement_cost / eff_cost, 1)
+
     new_id = f"INT-{100 + len(cached_interventions) + 1}"
     record = {
         "id": new_id,
@@ -707,7 +724,8 @@ def commit_intervention(req: CommitInterventionRequest):
         "riskAfter": simulated_score,
         "date": "Just now",
         "status": req.status or "Approved",
-        "roiMultiplier": "4.8x" if (base_score - simulated_score) > 25 else "3.2x",
+        "roiMultiplier": f"{computed_roi}x",
+        "grossRoiMultiplier": f"{gross_roi}x",
         "notes": req.manager_notes or f"Executive intervention submitted. Predicted flight risk dropped from {base_score}% to {simulated_score}%."
     }
 
