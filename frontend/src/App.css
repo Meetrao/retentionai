@@ -4277,6 +4277,184 @@ body {
   to { transform: rotate(360deg); }
 }
 
+/* Department Radar Employee Search & Cards */
+.dept-radar-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.metric-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metric-pill span:first-child {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.metric-pill span:last-child {
+  font-size: 0.95rem;
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.dept-emp-search-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.dept-emp-search-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dept-emp-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+}
+
+.dept-emp-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 8px 10px;
+  gap: 10px;
+  transition: all 0.18s ease;
+}
+
+.dept-emp-item:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.05);
+  transform: translateY(-1px);
+}
+
+.light-theme .dept-emp-item {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.light-theme .dept-emp-item:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.dept-emp-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+
+.dept-emp-name {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+}
+
+.dept-emp-name:hover {
+  color: var(--accent-primary);
+  text-decoration: underline;
+}
+
+.dept-emp-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dept-emp-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.dept-emp-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dept-emp-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-input);
+  border: 1px dashed var(--border-subtle);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  justify-content: center;
+  text-align: center;
+}
+
+.light-theme .dept-emp-empty {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.dept-emp-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dept-emp-preview-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0 2px;
+}
+
+.dept-emp-more-btn {
+  background: transparent;
+  border: 1px dashed var(--border-subtle);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--accent-primary);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.dept-emp-more-btn:hover {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: var(--accent-primary);
+}
+
 
 
 

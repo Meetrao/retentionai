@@ -196,6 +196,7 @@ export default function App() {
   // Live Backend State
   const [employees, setEmployees] = useState(INITIAL_EMPLOYEES);
   const [departmentData, setDepartmentData] = useState(DEPARTMENT_METRICS);
+  const [deptSearchQueries, setDeptSearchQueries] = useState({});
   const [kpiData, setKpiData] = useState(null);
   const [modelMetrics, setModelMetrics] = useState(MODEL_BENCHMARKS);
   const [isBackendConnected, setIsBackendConnected] = useState(false);
@@ -2293,46 +2294,218 @@ export default function App() {
           {activeTab === 'departments' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               <div className="grid-3-col">
-                {departmentData.map(d => (
-                  <div key={d.department} className="chart-card">
-                    <div className="card-title-row">
-                      <span style={{ fontWeight: 800, fontSize: '1.1rem' }}>{d.department}</span>
-                      <span className={`risk-badge ${d.avgRisk > 30 ? 'critical' : d.avgRisk > 20 ? 'medium' : 'low'}`}>
-                        {d.avgRisk}% Risk
-                      </span>
-                    </div>
+                {departmentData.map(d => {
+                  const query = (deptSearchQueries[d.department] || '').trim();
+                  const deptEmps = employees.filter(e => (e.department || '').toLowerCase() === d.department.toLowerCase());
+                  const matchedEmps = query 
+                    ? deptEmps.filter(e => 
+                        (e.name || '').toLowerCase().includes(query.toLowerCase()) || 
+                        (e.id || '').toLowerCase().includes(query.toLowerCase()) ||
+                        (e.role || '').toLowerCase().includes(query.toLowerCase())
+                      )
+                    : [];
+                  const topRiskEmps = [...deptEmps].sort((a, b) => b.riskScore - a.riskScore).slice(0, 3);
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, background: 'var(--bg-input)', padding: 12, borderRadius: 10 }}>
-                      <div className="metric-pill">
-                        <span>Total Headcount</span>
-                        <span>{d.headCount} Employees</span>
+                  return (
+                    <div key={d.department} className="chart-card dept-radar-card">
+                      <div className="card-title-row">
+                        <span style={{ fontWeight: 800, fontSize: '1.15rem' }}>{d.department}</span>
+                        <span className={`risk-badge ${d.avgRisk > 30 ? 'critical' : d.avgRisk > 20 ? 'medium' : 'low'}`}>
+                          {d.avgRisk}% Risk
+                        </span>
                       </div>
-                      <div className="metric-pill">
-                        <span>High Flight Risk</span>
-                        <span style={{ color: d.highRiskCount > 5 ? '#fb7185' : 'inherit' }}>{d.highRiskCount} Members</span>
-                      </div>
-                      <div className="metric-pill">
-                        <span>Average CTC</span>
-                        <span>₹{(d.avgSalary / 100000).toFixed(1)} LPA</span>
-                      </div>
-                      <div className="metric-pill">
-                        <span>Attrition Forecast</span>
-                        <span style={{ color: '#fb923c' }}>{d.attritionForecast}</span>
-                      </div>
-                    </div>
 
-                    <button 
-                      className="btn-secondary" 
-                      style={{ justifyContent: 'center' }}
-                      onClick={() => {
-                        setDeptFilter(d.department);
-                        navigateTo('directory');
-                      }}
-                    >
-                      Filter {d.department} Team &rarr;
-                    </button>
-                  </div>
-                ))}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, background: 'var(--bg-input)', padding: 12, borderRadius: 10 }}>
+                        <div className="metric-pill">
+                          <span>Total Headcount</span>
+                          <span>{d.headCount} Employees</span>
+                        </div>
+                        <div className="metric-pill">
+                          <span>High Flight Risk</span>
+                          <span style={{ color: d.highRiskCount > 5 ? '#fb7185' : 'inherit' }}>{d.highRiskCount} Members</span>
+                        </div>
+                        <div className="metric-pill">
+                          <span>Average CTC</span>
+                          <span>₹{(d.avgSalary / 100000).toFixed(1)} LPA</span>
+                        </div>
+                        <div className="metric-pill">
+                          <span>Attrition Forecast</span>
+                          <span style={{ color: '#fb923c' }}>{d.attritionForecast}</span>
+                        </div>
+                      </div>
+
+                      {/* Direct Employee Search Box for this Department */}
+                      <div className="dept-emp-search-wrap">
+                        <div className="dept-emp-search-header">
+                          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                            Find Employee in {d.department}
+                          </span>
+                          {query && (
+                            <span style={{ fontSize: '0.74rem', color: 'var(--accent-primary)', fontWeight: 700 }}>
+                              {matchedEmps.length} {matchedEmps.length === 1 ? 'match' : 'matches'}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="search-box" style={{ width: '100%', position: 'relative' }}>
+                          <Search size={14} />
+                          <input 
+                            type="text" 
+                            placeholder={`Search ${d.department} by ID or name...`}
+                            value={deptSearchQueries[d.department] || ''}
+                            onChange={(e) => setDeptSearchQueries(prev => ({ ...prev, [d.department]: e.target.value }))}
+                          />
+                          {deptSearchQueries[d.department] && (
+                            <button 
+                              className="search-clear-btn"
+                              onClick={() => setDeptSearchQueries(prev => ({ ...prev, [d.department]: '' }))}
+                              title="Clear search"
+                            >
+                              <X size={13} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Dynamic Search Results or Top At-Risk Preview */}
+                      {query ? (
+                        matchedEmps.length === 0 ? (
+                          <div className="dept-emp-empty">
+                            <AlertTriangle size={16} color="#f59e0b" />
+                            <span>No employee found in {d.department} matching "{query}"</span>
+                          </div>
+                        ) : (
+                          <div className="dept-emp-results-list">
+                            {matchedEmps.slice(0, 5).map(emp => (
+                              <div key={emp.id} className="dept-emp-item">
+                                <div 
+                                  className="dept-emp-left" 
+                                  title="View dossier"
+                                  onClick={() => { setSelectedEmployee(emp); setIsModalOpen(true); }}
+                                >
+                                  <img src={emp.avatar} alt={emp.name} className="table-avatar" style={{ width: 34, height: 34 }} />
+                                  <div style={{ minWidth: 0 }}>
+                                    <div className="dept-emp-name">{emp.name}</div>
+                                    <div className="dept-emp-sub">{emp.id} • {emp.role}</div>
+                                  </div>
+                                </div>
+                                <div className="dept-emp-right">
+                                  <span className={`risk-badge ${emp.riskTier === 'Critical' ? 'critical' : emp.riskTier === 'High' ? 'high' : emp.riskTier === 'Medium' ? 'medium' : 'low'}`} style={{ padding: '2px 7px', fontSize: '0.72rem' }}>
+                                    {emp.riskScore}%
+                                  </span>
+                                  <div className="dept-emp-actions">
+                                    <button 
+                                      className="icon-btn"
+                                      title="AI Copilot Plan"
+                                      onClick={() => askCopilotAboutEmployee(emp)}
+                                      style={{ width: 26, height: 26 }}
+                                    >
+                                      <Sparkles size={12} />
+                                    </button>
+                                    <button 
+                                      className="icon-btn"
+                                      title="Simulate in What-If"
+                                      onClick={() => { setSimTargetEmp(emp); navigateTo('simulator'); }}
+                                      style={{ width: 26, height: 26 }}
+                                    >
+                                      <Sliders size={12} />
+                                    </button>
+                                    <button 
+                                      className="icon-btn"
+                                      title="Profile Dossier"
+                                      onClick={() => { setSelectedEmployee(emp); setIsModalOpen(true); }}
+                                      style={{ width: 26, height: 26 }}
+                                    >
+                                      <UserCheck size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                            {matchedEmps.length > 5 && (
+                              <button 
+                                className="dept-emp-more-btn"
+                                onClick={() => {
+                                  setDeptFilter(d.department);
+                                  setSearchQuery(query);
+                                  navigateTo('directory');
+                                }}
+                              >
+                                View all {matchedEmps.length} results in Directory &rarr;
+                              </button>
+                            )}
+                          </div>
+                        )
+                      ) : (
+                        <div className="dept-emp-preview-wrap">
+                          <div className="dept-emp-preview-title">
+                            <span>Key At-Risk Personnel</span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Top Flight Risks</span>
+                          </div>
+                          <div className="dept-emp-results-list">
+                            {topRiskEmps.map(emp => (
+                              <div key={emp.id} className="dept-emp-item">
+                                <div 
+                                  className="dept-emp-left"
+                                  title="View dossier"
+                                  onClick={() => { setSelectedEmployee(emp); setIsModalOpen(true); }}
+                                >
+                                  <img src={emp.avatar} alt={emp.name} className="table-avatar" style={{ width: 34, height: 34 }} />
+                                  <div style={{ minWidth: 0 }}>
+                                    <div className="dept-emp-name">{emp.name}</div>
+                                    <div className="dept-emp-sub">{emp.id} • {emp.role}</div>
+                                  </div>
+                                </div>
+                                <div className="dept-emp-right">
+                                  <span className={`risk-badge ${emp.riskTier === 'Critical' ? 'critical' : emp.riskTier === 'High' ? 'high' : emp.riskTier === 'Medium' ? 'medium' : 'low'}`} style={{ padding: '2px 7px', fontSize: '0.72rem' }}>
+                                    {emp.riskScore}%
+                                  </span>
+                                  <div className="dept-emp-actions">
+                                    <button 
+                                      className="icon-btn"
+                                      title="AI Copilot Plan"
+                                      onClick={() => askCopilotAboutEmployee(emp)}
+                                      style={{ width: 26, height: 26 }}
+                                    >
+                                      <Sparkles size={12} />
+                                    </button>
+                                    <button 
+                                      className="icon-btn"
+                                      title="Simulate in What-If"
+                                      onClick={() => { setSimTargetEmp(emp); navigateTo('simulator'); }}
+                                      style={{ width: 26, height: 26 }}
+                                    >
+                                      <Sliders size={12} />
+                                    </button>
+                                    <button 
+                                      className="icon-btn"
+                                      title="Profile Dossier"
+                                      onClick={() => { setSelectedEmployee(emp); setIsModalOpen(true); }}
+                                      style={{ width: 26, height: 26 }}
+                                    >
+                                      <UserCheck size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <button 
+                        className="btn-secondary" 
+                        style={{ justifyContent: 'center', marginTop: 'auto' }}
+                        onClick={() => {
+                          setDeptFilter(d.department);
+                          navigateTo('directory');
+                        }}
+                      >
+                        Filter {d.department} Team &rarr;
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
