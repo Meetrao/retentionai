@@ -9,7 +9,8 @@ import {
   Clock, Award, Sparkles, UserCheck, Briefcase, Building2,
   CheckSquare, Filter, Layers, HelpCircle, Bot, Send,
   MessageSquare, Trash2, ArrowRight, LayoutGrid, Grid3X3,
-  Target, ArrowUpDown, Calendar, Check, Download, Printer, Copy
+  Target, ArrowUpDown, Calendar, Check, Download, Printer, Copy,
+  Mail, Phone, ExternalLink, Info, AlertOctagon
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
@@ -73,19 +74,38 @@ const getInitialRole = () => {
   return 'HR Executive';
 };
 
+export const getEmployeeEmail = (emp) => {
+  if (!emp) return 'contact@retentionai.enterprise';
+  if (emp.email) return emp.email;
+  const cleanName = (emp.name || 'personnel').toLowerCase().replace(/[^a-z]/g, '.').replace(/\.+/g, '.');
+  return `${cleanName}@retentionai.enterprise`;
+};
+
+export const getEmployeePhone = (emp) => {
+  if (!emp) return '+1 (800) 555-0199';
+  if (emp.phone) return emp.phone;
+  const seed = (emp.name || emp.id || 'employee').split('').reduce((acc, c) => acc + c.charCodeAt(0), 100);
+  const num = (Math.abs(seed) % 900) + 100;
+  return `+1 (555) 019-${num}`;
+};
+
 const getInitialTab = () => {
   if (typeof window !== 'undefined') {
     const role = getInitialRole();
     const roleConfig = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS['HR Executive'];
     const hash = window.location.hash.replace(/^#\/?/, '').trim();
+    if (!hash) {
+      const saved = localStorage.getItem('retentionai_active_tab');
+      if (saved && VALID_TABS.includes(saved) && roleConfig.allowedTabs.includes(saved)) {
+        return saved;
+      }
+      return roleConfig.defaultTab;
+    }
     if (VALID_TABS.includes(hash) && roleConfig.allowedTabs.includes(hash)) {
       return hash;
     }
-    const saved = localStorage.getItem('retentionai_active_tab');
-    if (saved && VALID_TABS.includes(saved) && roleConfig.allowedTabs.includes(saved)) {
-      return saved;
-    }
-    return roleConfig.defaultTab;
+    // Route not found or forbidden -> fallback to custom 404 page
+    return '404';
   }
   return 'dashboard';
 };
@@ -116,17 +136,27 @@ export default function App() {
   const isTabAllowed = (tab) => currentRoleConfig.allowedTabs.includes(tab);
 
   const navigateTo = (tab, replace = false) => {
-    setActiveTab(tab);
     setIsMobileMenuOpen(false);
-    localStorage.setItem('retentionai_active_tab', tab);
-    
-    const targetHash = `#/${tab}`;
-    if (window.location.hash !== targetHash) {
-      if (replace) {
-        window.history.replaceState({ tab }, '', targetHash);
-      } else {
-        window.history.pushState({ tab }, '', targetHash);
+    if (tab === '404') {
+      setActiveTab('404');
+      window.location.hash = '#/404';
+      return;
+    }
+    const roleConfig = ROLE_PERMISSIONS[activeRole] || ROLE_PERMISSIONS['HR Executive'];
+    if (VALID_TABS.includes(tab) && roleConfig.allowedTabs.includes(tab)) {
+      setActiveTab(tab);
+      localStorage.setItem('retentionai_active_tab', tab);
+      const targetHash = `#/${tab}`;
+      if (window.location.hash !== targetHash) {
+        if (replace) {
+          window.history.replaceState({ tab }, '', targetHash);
+        } else {
+          window.history.pushState({ tab }, '', targetHash);
+        }
       }
+    } else {
+      setActiveTab('404');
+      window.location.hash = `#/${tab}`;
     }
   };
 
@@ -138,11 +168,11 @@ export default function App() {
     if (!roleConfig.allowedTabs.includes(activeTab)) {
       navigateTo(roleConfig.defaultTab);
     }
-    showToast(`Switched RBAC perspective to ${roleConfig.name}`);
+    showToast(`Switched RBAC perspective to ${roleConfig.name}`, 'info');
     setIsMobileMenuOpen(false);
   };
 
-  // URL Hash & Browser History (Back / Forward Navigation to Dashboard)
+  // URL Hash & Browser History (Back / Forward Navigation with 404 Support)
   useEffect(() => {
     const currentTab = getInitialTab();
     if (window.location.hash !== `#/${currentTab}`) {
@@ -154,14 +184,15 @@ export default function App() {
       const currentRole = localStorage.getItem('retentionai_active_role') || 'HR Executive';
       const roleConfig = ROLE_PERMISSIONS[currentRole] || ROLE_PERMISSIONS['HR Executive'];
 
-      if (VALID_TABS.includes(hash) && roleConfig.allowedTabs.includes(hash)) {
+      if (!hash) {
+        setActiveTab(roleConfig.defaultTab);
+        localStorage.setItem('retentionai_active_tab', roleConfig.defaultTab);
+      } else if (VALID_TABS.includes(hash) && roleConfig.allowedTabs.includes(hash)) {
         setActiveTab(hash);
         localStorage.setItem('retentionai_active_tab', hash);
       } else {
-        // Fallback to role's primary view
-        setActiveTab(roleConfig.defaultTab);
-        localStorage.setItem('retentionai_active_tab', roleConfig.defaultTab);
-        window.history.replaceState({ tab: roleConfig.defaultTab }, '', `#/${roleConfig.defaultTab}`);
+        // Unrecognized or restricted route -> 404 Not Found Page
+        setActiveTab('404');
       }
       setIsMobileMenuOpen(false);
       setIsModalOpen(false);
@@ -183,6 +214,23 @@ export default function App() {
       window.removeEventListener('resize', handleResize);
     };
   }, []);
+
+  // Dynamic document title per route and perspective
+  useEffect(() => {
+    const titles = {
+      dashboard: 'Workforce Attrition Overview',
+      directory: activeRole === 'Team Lead' ? 'Team Member Risk Assessment' : activeRole === 'Data Analyst' ? 'Model Test Sample Diagnostics' : 'Employee Risk Explorer',
+      departments: 'Departmental Risk Distribution',
+      matrix: 'Talent Retention 9-Box Matrix',
+      simulator: 'AI What-If Retention Simulator',
+      playbook: 'Prescriptive Retention Playbook',
+      interventions: activeRole === 'Team Lead' ? 'Submit Retention Interventions' : 'Mitigation Actions & ROI Log',
+      models: 'Champion ML Architecture & Benchmarks',
+      '404': '404 - Route Not Found'
+    };
+    const currentName = titles[activeTab] || 'Workforce Intelligence';
+    document.title = `RetentionAI | ${currentName}`;
+  }, [activeTab, activeRole]);
 
   // Theme synchronization effect
   useEffect(() => {
@@ -234,7 +282,8 @@ export default function App() {
   // Employee State & Modals
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [notification, setNotification] = useState(null);
+  const [toast, setToast] = useState(null);
+  const toastTimerRef = useRef(null);
 
   // Simulator State
   const [simTargetEmp, setSimTargetEmp] = useState(INITIAL_EMPLOYEES[0]);
@@ -252,16 +301,19 @@ export default function App() {
   const [isRetraining, setIsRetraining] = useState(false);
   const [playbookCategoryFilter, setPlaybookCategoryFilter] = useState('All');
 
-  // Helper notification trigger
-  const showToast = (msg) => {
-    setNotification(msg);
-    setTimeout(() => setNotification(null), 3500);
+  // Helper notification trigger supporting success, error, warning, info
+  const showToast = (message, type = 'success') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ message, type });
+    toastTimerRef.current = setTimeout(() => {
+      setToast(null);
+    }, 4000);
   };
 
   // Export Workforce Risk Dossier as CSV
   const handleExportDossier = () => {
     if (!filteredEmployees || filteredEmployees.length === 0) {
-      showToast('No employee records available to export.');
+      showToast('No employee records available to export.', 'warning');
       return;
     }
 
@@ -324,10 +376,10 @@ export default function App() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      showToast(`Exported ${filteredEmployees.length} employee records to CSV dossier.`);
+      showToast(`Exported ${filteredEmployees.length} employee records to CSV dossier.`, 'success');
     } catch (err) {
       console.error('Export failed:', err);
-      showToast('Failed to export risk dossier.');
+      showToast('Failed to export risk dossier.', 'error');
     }
   };
 
@@ -627,7 +679,7 @@ export default function App() {
 
   const handleExportMatrixCohortCSV = () => {
     if (!matrixFilteredEmployees || matrixFilteredEmployees.length === 0) {
-      showToast('No cohort personnel available to export.');
+      showToast('No cohort personnel available to export.', 'warning');
       return;
     }
     try {
@@ -680,10 +732,10 @@ export default function App() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      showToast(`Exported ${matrixFilteredEmployees.length} personnel to CSV.`);
+      showToast(`Exported ${matrixFilteredEmployees.length} personnel to CSV.`, 'success');
     } catch (err) {
       console.error('Export failed:', err);
-      showToast('Failed to export cohort CSV.');
+      showToast('Failed to export cohort CSV.', 'error');
     }
   };
 
@@ -873,7 +925,15 @@ export default function App() {
                   <tr key={emp.id}>
                     <td>
                       <div className="emp-cell">
-                        <img src={emp.avatar} alt={emp.name} className="table-avatar" />
+                        <img 
+                          src={emp.avatar} 
+                          alt={emp.name} 
+                          className="table-avatar" 
+                          width="38" 
+                          height="38" 
+                          loading="lazy" 
+                          decoding="async" 
+                        />
                         <div>
                           <div 
                             className="emp-name" 
@@ -1084,7 +1144,7 @@ export default function App() {
 
   const handleMarkAllAlertsRead = () => {
     setAlertsData(prev => prev.map(a => ({ ...a, read: true })));
-    showToast('All risk alerts marked as acknowledged');
+    showToast('All risk alerts marked as acknowledged', 'info');
   };
 
   const handleDismissAlert = (id, e) => {
@@ -1136,7 +1196,7 @@ export default function App() {
           status: 'Mitigation Active'
         } : e));
 
-        showToast(`⚡ Retention plan for ${simTargetEmp.name} committed! Risk reduced to ${committedRecord.riskAfter}%.`);
+        showToast(`⚡ Retention plan for ${simTargetEmp.name} committed! Risk reduced to ${committedRecord.riskAfter}%.`, 'success');
         navigateTo('interventions');
       } else {
         throw new Error('Failed to commit intervention');
@@ -1160,7 +1220,7 @@ export default function App() {
         notes: "Committed retention package via What-If simulator."
       };
       setCommittedPlans(prev => [fallbackRecord, ...prev]);
-      showToast(`⚡ Retention plan for ${simTargetEmp.name} committed!`);
+      showToast(`⚡ Retention plan for ${simTargetEmp.name} committed!`, 'success');
       navigateTo('interventions');
     } finally {
       setIsCommittingPlan(false);
@@ -1189,7 +1249,7 @@ export default function App() {
     } catch (e) {
       // graceful fallback
     }
-    showToast(`📅 1-on-1 Retention Review scheduled for ${scheduleModalEmp.name} on ${meetingDate}`);
+    showToast(`📅 1-on-1 Retention Review scheduled for ${scheduleModalEmp.name} on ${meetingDate}`, 'success');
     setIsScheduleModalOpen(false);
   };
 
@@ -1430,7 +1490,7 @@ export default function App() {
       ]);
     }
 
-    showToast(`Retention plan committed for ${simTargetEmp.name}! Risk reduced by ${simRiskDelta} pts.`);
+    showToast(`Retention plan committed for ${simTargetEmp.name}! Risk reduced by ${simRiskDelta} pts.`, 'success');
   };
 
   const simRiskDelta = simTargetEmp ? simTargetEmp.riskScore - simulatedRisk.score : 0;
@@ -1449,26 +1509,32 @@ export default function App() {
 
   return (
     <div className={`app-container ${!isDarkMode ? 'light-theme' : ''}`}>
-      {/* Toast Notification */}
-      {notification && (
-        <div style={{
-          position: 'fixed',
-          top: 24,
-          right: 24,
-          zIndex: 9999,
-          background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-          color: '#ffffff',
-          padding: '12px 20px',
-          borderRadius: 12,
-          boxShadow: '0 10px 25px rgba(79, 70, 229, 0.4)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          fontWeight: 600,
-          fontSize: '0.9rem'
-        }}>
-          <Sparkles size={18} />
-          {notification}
+      {/* Toast Notification (Success, Error, Info, Warning) */}
+      {toast && (
+        <div 
+          className={`toast-banner toast-${toast.type || 'success'}`}
+          role="alert"
+          aria-live="polite"
+        >
+          <div className="toast-icon-wrap">
+            {toast.type === 'error' && <AlertTriangle size={18} />}
+            {toast.type === 'warning' && <AlertTriangle size={18} />}
+            {toast.type === 'info' && <Info size={18} />}
+            {(!toast.type || toast.type === 'success') && <CheckCircle2 size={18} />}
+          </div>
+          <div className="toast-text-wrap">
+            <span className="toast-type-tag">
+              {toast.type === 'error' ? 'System Error' : toast.type === 'warning' ? 'Notice' : toast.type === 'info' ? 'Telemetry' : 'Action Success'}
+            </span>
+            <span className="toast-msg">{toast.message}</span>
+          </div>
+          <button 
+            className="toast-dismiss-btn" 
+            onClick={() => setToast(null)}
+            aria-label="Dismiss notification"
+          >
+            <X size={14} />
+          </button>
         </div>
       )}
 
@@ -1485,9 +1551,17 @@ export default function App() {
       <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="brand-wrapper">
           <div 
+            className="brand-header-clickable"
             style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
             onClick={() => navigateTo(currentRoleConfig.defaultTab)}
-            title="Go to Home"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                navigateTo(currentRoleConfig.defaultTab);
+              }
+            }}
+            title="Return to Central Dashboard"
           >
             <div className="brand-icon-box">
               {/* RetentionAI custom SVG logo mark */}
@@ -1662,6 +1736,15 @@ export default function App() {
             >
               {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
+            <div 
+              className="mobile-brand-icon"
+              onClick={() => navigateTo(currentRoleConfig.defaultTab)}
+              role="button"
+              tabIndex={0}
+              title="Return to Dashboard"
+            >
+              <Sparkles size={16} color="#818cf8" />
+            </div>
             <div className="header-left">
               <h2 className="page-title">
                 {activeTab === 'dashboard' && 'Workforce Attrition Overview'}
@@ -1672,6 +1755,7 @@ export default function App() {
                 {activeTab === 'playbook' && 'Prescriptive Retention Playbook'}
                 {activeTab === 'interventions' && (activeRole === 'Team Lead' ? 'Submit Retention Interventions' : 'Mitigation Actions & ROI Log')}
                 {activeTab === 'models' && 'Champion ML Architecture & Benchmarks'}
+                {activeTab === '404' && 'Workforce Route Not Located (404)'}
               </h2>
             </div>
           </div>
@@ -2069,7 +2153,15 @@ export default function App() {
                         }}
                       >
                         <div className="feed-emp-info">
-                          <img src={emp.avatar} alt={emp.name} className="feed-emp-avatar" />
+                          <img 
+                            src={emp.avatar} 
+                            alt={emp.name} 
+                            className="feed-emp-avatar" 
+                            width="40" 
+                            height="40" 
+                            loading="lazy" 
+                            decoding="async" 
+                          />
                           <div className="feed-emp-details">
                             <h4>{emp.name}</h4>
                             <p>{emp.role} • {emp.department}</p>
@@ -2163,7 +2255,15 @@ export default function App() {
                         <tr key={emp.id}>
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                              <img src={emp.avatar} alt={emp.name} style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }} />
+                              <img 
+                                src={emp.avatar} 
+                                alt={emp.name} 
+                                width="36" 
+                                height="36" 
+                                loading="lazy" 
+                                decoding="async" 
+                                style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }} 
+                              />
                               <div>
                                 <div style={{ fontWeight: 700 }}>{emp.name}</div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{emp.id}</div>
@@ -2383,7 +2483,16 @@ export default function App() {
                                   title="View dossier"
                                   onClick={() => { setSelectedEmployee(emp); setIsModalOpen(true); }}
                                 >
-                                  <img src={emp.avatar} alt={emp.name} className="table-avatar" style={{ width: 34, height: 34 }} />
+                                  <img 
+                                    src={emp.avatar} 
+                                    alt={emp.name} 
+                                    className="table-avatar" 
+                                    width="34" 
+                                    height="34" 
+                                    loading="lazy" 
+                                    decoding="async" 
+                                    style={{ width: 34, height: 34 }} 
+                                  />
                                   <div style={{ minWidth: 0 }}>
                                     <div className="dept-emp-name">{emp.name}</div>
                                     <div className="dept-emp-sub">{emp.id} • {emp.role}</div>
@@ -2450,7 +2559,16 @@ export default function App() {
                                   title="View dossier"
                                   onClick={() => { setSelectedEmployee(emp); setIsModalOpen(true); }}
                                 >
-                                  <img src={emp.avatar} alt={emp.name} className="table-avatar" style={{ width: 34, height: 34 }} />
+                                  <img 
+                                    src={emp.avatar} 
+                                    alt={emp.name} 
+                                    className="table-avatar" 
+                                    width="34" 
+                                    height="34" 
+                                    loading="lazy" 
+                                    decoding="async" 
+                                    style={{ width: 34, height: 34 }} 
+                                  />
                                   <div style={{ minWidth: 0 }}>
                                     <div className="dept-emp-name">{emp.name}</div>
                                     <div className="dept-emp-sub">{emp.id} • {emp.role}</div>
@@ -2789,7 +2907,15 @@ export default function App() {
 
                 {simTargetEmp && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--bg-input)', padding: 14, borderRadius: 12, border: '1px solid var(--border-subtle)' }}>
-                    <img src={simTargetEmp.avatar} alt={simTargetEmp.name} style={{ width: 48, height: 48, borderRadius: 10, objectFit: 'cover' }} />
+                    <img 
+                      src={simTargetEmp.avatar} 
+                      alt={simTargetEmp.name} 
+                      width="48" 
+                      height="48" 
+                      loading="lazy" 
+                      decoding="async" 
+                      style={{ width: 48, height: 48, borderRadius: 10, objectFit: 'cover' }} 
+                    />
                     <div style={{ flex: 1 }}>
                       <h4 style={{ fontWeight: 700 }}>{simTargetEmp.name}</h4>
                       <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
@@ -3058,14 +3184,14 @@ export default function App() {
                         className="btn-secondary playbook-action-btn"
                         onClick={() => {
                           navigateTo('simulator');
-                          showToast(`Opened Simulator to evaluate ${play.title}`);
+                          showToast(`Opened Simulator to evaluate ${play.title}`, 'info');
                         }}
                       >
                         <Sliders size={14} /> Test in Simulator
                       </button>
                       <button 
                         className="btn-primary playbook-action-btn" 
-                        onClick={() => showToast(`Initiated automated rollout workflow for ${play.title}`)}
+                        onClick={() => showToast(`Initiated automated rollout workflow for ${play.title}`, 'success')}
                       >
                         <PlayCircle size={14} /> Deploy Strategy
                       </button>
@@ -3299,10 +3425,10 @@ export default function App() {
                     style={{ width: '100%', justifyContent: 'center' }}
                     onClick={() => {
                       setIsRetraining(true);
-                      showToast('Triggering full model re-training across 300 epochs...');
+                      showToast('Triggering full model re-training across 300 epochs...', 'info');
                       setTimeout(() => {
                         setIsRetraining(false);
-                        showToast('Model re-training complete! Benchmark: 86.1% Accuracy, 0.811 ROC-AUC.');
+                        showToast('Model re-training complete! Benchmark: 86.1% Accuracy, 0.811 ROC-AUC.', 'success');
                       }, 2000);
                     }}
                   >
@@ -3313,7 +3439,175 @@ export default function App() {
               </div>
             </div>
           )}
+
+          {/* Custom 404 Route Fallback View */}
+          {activeTab === '404' && (
+            <div className="not-found-view">
+              <div className="not-found-card">
+                <div className="not-found-badge">
+                  <span className="not-found-dot"></span>
+                  <span>HTTP 404 • WORKFORCE ROUTE UNRESOLVED</span>
+                </div>
+                <div className="not-found-code">404</div>
+                <h3 className="not-found-title">Workforce Intelligence View Not Found</h3>
+                <p className="not-found-desc">
+                  The requested neural module or diagnostic endpoint does not exist, or has been restricted under your active RBAC perspective (<strong style={{ color: '#818cf8' }}>{activeRole}</strong>).
+                </p>
+                <div className="not-found-actions">
+                  <button 
+                    className="btn-primary" 
+                    onClick={() => {
+                      const roleConfig = ROLE_PERMISSIONS[activeRole] || ROLE_PERMISSIONS['HR Executive'];
+                      navigateTo(roleConfig.defaultTab);
+                    }}
+                  >
+                    <BarChart3 size={16} /> Return to Primary Dashboard
+                  </button>
+                  <button className="btn-secondary" onClick={() => navigateTo('matrix')}>
+                    <LayoutGrid size={16} /> Talent 9-Box Matrix
+                  </button>
+                  <button className="btn-secondary" onClick={() => navigateTo('simulator')}>
+                    <Sliders size={16} /> What-If Simulator
+                  </button>
+                  <a 
+                    href="http://127.0.0.1:8000/docs" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="btn-secondary not-found-docs-link"
+                  >
+                    <FileText size={16} /> FastAPI Docs <ExternalLink size={13} />
+                  </a>
+                </div>
+                <div className="not-found-hint">
+                  <span>Authorized tabs: {currentRoleConfig.allowedTabs.join(', ')}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Enterprise Site Footer */}
+        <footer className="site-footer">
+          <div className="footer-top-grid">
+            <div className="footer-col brand-col">
+              <div 
+                className="footer-brand"
+                onClick={() => {
+                  const roleConfig = ROLE_PERMISSIONS[activeRole] || ROLE_PERMISSIONS['HR Executive'];
+                  navigateTo(roleConfig.defaultTab);
+                }}
+                role="button"
+                tabIndex={0}
+                title="Return to Central Dashboard"
+              >
+                <div className="brand-logo footer-logo">
+                  <svg viewBox="0 0 28 28" width="22" height="22" fill="none">
+                    <path d="M5 22 L13 6 L21 22" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M8 17 L18 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    <circle cx="13" cy="6" r="2.5" fill="currentColor"/>
+                  </svg>
+                </div>
+                <div>
+                  <div className="footer-brand-title">RetentionAI Platform</div>
+                  <div className="footer-brand-sub">Workforce Neural Intelligence & Attrition ML</div>
+                </div>
+              </div>
+              <p className="footer-about-text">
+                Real-time workforce flight-risk diagnosis, champion soft-voting ensemble ML, 9-box talent matrix calibration, and actionable prescriptive retention interventions.
+              </p>
+              <div className="footer-creator-badge">
+                <Sparkles size={14} color="#818cf8" />
+                <span>Crafted with precision • <strong>Follow Prashanu Builds for more</strong></span>
+              </div>
+            </div>
+
+            <div className="footer-col">
+              <div className="footer-col-title">Platform Modules</div>
+              <ul className="footer-nav-list">
+                <li><button onClick={() => navigateTo('dashboard')}>Workforce Dashboard</button></li>
+                <li><button onClick={() => navigateTo('directory')}>Flight Risk Explorer</button></li>
+                <li><button onClick={() => navigateTo('departments')}>Department Radar</button></li>
+                <li><button onClick={() => navigateTo('matrix')}>9-Box Talent Matrix</button></li>
+                <li><button onClick={() => navigateTo('simulator')}>What-If Simulator</button></li>
+                <li><button onClick={() => navigateTo('playbook')}>Prescriptive Playbook</button></li>
+              </ul>
+            </div>
+
+            <div className="footer-col">
+              <div className="footer-col-title">Telemetry & System</div>
+              <ul className="footer-nav-list">
+                <li>
+                  <a href="http://127.0.0.1:8000/docs" target="_blank" rel="noopener noreferrer" className="footer-external-link">
+                    <span>FastAPI Interactive Docs</span>
+                    <ExternalLink size={12} />
+                  </a>
+                </li>
+                <li>
+                  <a href="http://127.0.0.1:8000/health" target="_blank" rel="noopener noreferrer" className="footer-external-link">
+                    <span>ML Pipeline Health API</span>
+                    <ExternalLink size={12} />
+                  </a>
+                </li>
+                <li>
+                  <button onClick={() => {
+                    showToast(isBackendConnected ? 'Backend Status: Connected & Healthy (FastAPI :8000)' : 'Backend Status: Operating in Standalone Mock Fallback', isBackendConnected ? 'success' : 'info');
+                  }}>
+                    Check Backend Telemetry
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => navigateTo('models')}>
+                    Ensemble Model Benchmarks
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div className="footer-col contact-col">
+              <div className="footer-col-title">Enterprise Support & Contacts</div>
+              <p className="footer-contact-desc">
+                Need custom predictive HR modeling or workforce onboarding assistance?
+              </p>
+              <div className="footer-contact-links">
+                <a href="mailto:support@retentionai.enterprise" className="footer-contact-item">
+                  <Mail size={15} />
+                  <span>support@retentionai.enterprise</span>
+                </a>
+                <a href="tel:+18005550199" className="footer-contact-item">
+                  <Phone size={15} />
+                  <span>+1 (800) 555-0199 (Toll Free)</span>
+                </a>
+              </div>
+              <div className="footer-status-pill">
+                <span className={`status-dot ${isBackendConnected ? 'online' : 'offline'}`}></span>
+                <span>{isBackendConnected ? 'Ensemble Core Online (FastAPI)' : 'Local Data Mode Active'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="footer-bottom-bar">
+            <div className="footer-copyright">
+              &copy; {new Date().getFullYear()} RetentionAI Enterprise Systems. All rights reserved.
+            </div>
+            <div className="footer-bottom-links">
+              <button onClick={() => showToast('Enterprise Privacy Policy: Confidential personnel records & GDPR/HIPAA compliant data processing.', 'info')}>
+                Privacy Policy
+              </button>
+              <span className="footer-dot">•</span>
+              <button onClick={() => showToast('Terms of Service: Authorized enterprise workforce management and HR analytics license.', 'info')}>
+                Terms of Service
+              </button>
+              <span className="footer-dot">•</span>
+              <button onClick={() => showToast('Security: 256-bit AES encryption & RBAC enforcement active.', 'success')}>
+                Security Standard
+              </button>
+              <span className="footer-dot">•</span>
+              <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="footer-author-link">
+                Follow Prashanu Builds
+              </a>
+            </div>
+          </div>
+        </footer>
       </main>
 
       {/* 9-Box Matrix Quadrant Cohort Deep-Dive Modal */}
@@ -3382,6 +3676,10 @@ export default function App() {
                 <img 
                   src={selectedEmployee.avatar} 
                   alt={selectedEmployee.name} 
+                  width="54"
+                  height="54"
+                  loading="lazy"
+                  decoding="async"
                   style={{ width: 54, height: 54, borderRadius: 12, objectFit: 'cover' }} 
                 />
                 <div>
@@ -3391,9 +3689,29 @@ export default function App() {
                   </p>
                 </div>
               </div>
-              <button className="close-btn" onClick={() => setIsModalOpen(false)}>
+              <button className="close-btn" onClick={() => setIsModalOpen(false)} aria-label="Close modal">
                 <X size={20} />
               </button>
+            </div>
+
+            {/* Direct Corporate Contact Links (Clickable Email & Phone) */}
+            <div className="modal-contact-strip">
+              <a 
+                href={`mailto:${getEmployeeEmail(selectedEmployee)}`} 
+                className="contact-action-link"
+                title={`Send direct outreach email to ${selectedEmployee.name}`}
+              >
+                <Mail size={14} />
+                <span>{getEmployeeEmail(selectedEmployee)}</span>
+              </a>
+              <a 
+                href={`tel:${getEmployeePhone(selectedEmployee)}`} 
+                className="contact-action-link"
+                title={`Initiate phone outreach to ${selectedEmployee.name}`}
+              >
+                <Phone size={14} />
+                <span>{getEmployeePhone(selectedEmployee)}</span>
+              </a>
             </div>
 
             {/* Quick Metrics Grid */}
@@ -3497,7 +3815,14 @@ export default function App() {
             <div className="schedule-modal-body">
               {/* Employee Summary Chip */}
               <div className="schedule-emp-chip">
-                <img src={scheduleModalEmp.avatar} alt={scheduleModalEmp.name} />
+                <img 
+                  src={scheduleModalEmp.avatar} 
+                  alt={scheduleModalEmp.name} 
+                  width="42" 
+                  height="42" 
+                  loading="lazy" 
+                  decoding="async" 
+                />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{scheduleModalEmp.name}</div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
@@ -3729,7 +4054,7 @@ export default function App() {
                 onClick={() => {
                   const memoText = `RETENTION 1-ON-1 BRIEFING: ${talkingPointsEmp.name} (${talkingPointsEmp.role})\nRisk: ${talkingPointsEmp.riskScore}% (${talkingPointsEmp.riskTier})\nMarket Ratio: ${Math.round(talkingPointsEmp.salaryMarketRatio * 100)}%\nPrimary Drivers: ${talkingPointsEmp.primaryDrivers?.join(', ')}\n\nDiscussion Focus:\n1. Workload & Burnout Calibration\n2. Career Progression & Compensation\n3. Agreed Retention Action Plan`;
                   navigator.clipboard.writeText(memoText);
-                  showToast(`📋 Talking points copied to clipboard!`);
+                  showToast(`📋 Talking points copied to clipboard!`, 'success');
                 }}
               >
                 <Copy size={16} /> Copy to Clipboard
@@ -3842,7 +4167,15 @@ export default function App() {
                     {msg.employees.map((emp) => (
                       <div key={emp.id} className="copilot-emp-row">
                         <div className="copilot-emp-info">
-                          <img src={emp.avatar} alt={emp.name} className="copilot-emp-avatar" />
+                          <img 
+                            src={emp.avatar} 
+                            alt={emp.name} 
+                            className="copilot-emp-avatar" 
+                            width="28" 
+                            height="28" 
+                            loading="lazy" 
+                            decoding="async" 
+                          />
                           <div>
                             <div className="copilot-emp-name">{emp.name}</div>
                             <div className="copilot-emp-dept">{emp.role} • {emp.department}</div>
