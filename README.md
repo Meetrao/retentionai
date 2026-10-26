@@ -9,6 +9,8 @@ RetentionAI is an **enterprise‑grade SaaS** that predicts, diagnoses, and miti
 - An interactive **What‑If Simulator** that lets managers apply levers (salary bump, overtime cap, remote days, bonuses, fast‑track promotion) and instantly see the predicted risk reduction and financial ROI.
 - A **prescriptive playbook** and **intervention tracker** for governance and budgeting.
 
+> 📘 **Comprehensive Presentation & Architecture Guide:** Check out the complete [RetentionAI Master Guide](docs/RETENTION_AI_MASTER_GUIDE.md) for end-to-end system architecture, tab-by-tab walkthrough, 3-minute live pitch script, judge defense Q&A, and mathematically reconciled ROI formulas.
+
 ---
 
 ## 🏗️ Architecture Overview
