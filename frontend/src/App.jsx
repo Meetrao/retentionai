@@ -501,13 +501,13 @@ export default function App() {
         if (isOrdered) {
           elements.push(
             <ol key={`ol-${elements.length}`} style={{ margin: '6px 0 10px 0', paddingLeft: 20 }}>
-              {currentList.map((item, idx) => <li key={idx} style={{ marginBottom: 4 }}>{formatInline(item)}</li>)}
+              {currentList.map((item, idx) => <li key={`oli-${idx}`} style={{ marginBottom: 4 }}>{formatInline(item)}</li>)}
             </ol>
           );
         } else {
           elements.push(
             <ul key={`ul-${elements.length}`} style={{ margin: '6px 0 10px 0', paddingLeft: 20 }}>
-              {currentList.map((item, idx) => <li key={idx} style={{ marginBottom: 4 }}>{formatInline(item)}</li>)}
+              {currentList.map((item, idx) => <li key={`uli-${idx}`} style={{ marginBottom: 4 }}>{formatInline(item)}</li>)}
             </ul>
           );
         }
@@ -528,9 +528,9 @@ export default function App() {
         }
         const token = match[0];
         if (token.startsWith('**') && token.endsWith('**')) {
-          parts.push(<strong key={match.index} style={{ color: 'var(--text-main)' }}>{token.slice(2, -2)}</strong>);
+          parts.push(<strong key={`b-${match.index}`} style={{ color: 'var(--text-main)' }}>{token.slice(2, -2)}</strong>);
         } else if (token.startsWith('*') && token.endsWith('*')) {
-          parts.push(<em key={match.index} style={{ color: 'var(--text-muted)' }}>{token.slice(1, -1)}</em>);
+          parts.push(<em key={`i-${match.index}`} style={{ color: 'var(--text-muted)' }}>{token.slice(1, -1)}</em>);
         }
         lastIdx = match.index + token.length;
       }
@@ -549,10 +549,10 @@ export default function App() {
 
       if (trimmed.startsWith('#### ')) {
         flushList();
-        elements.push(<h4 key={index} style={{ fontSize: '0.84rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', margin: '12px 0 6px 0' }}>{formatInline(trimmed.slice(5))}</h4>);
+        elements.push(<h4 key={`h4-${index}`} style={{ fontSize: '0.84rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', margin: '12px 0 6px 0' }}>{formatInline(trimmed.slice(5))}</h4>);
       } else if (trimmed.startsWith('### ')) {
         flushList();
-        elements.push(<h3 key={index} style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-main)', margin: '0 0 10px 0' }}>{formatInline(trimmed.slice(4))}</h3>);
+        elements.push(<h3 key={`h3-${index}`} style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-main)', margin: '0 0 10px 0' }}>{formatInline(trimmed.slice(4))}</h3>);
       } else if (/^\d+\.\s/.test(trimmed)) {
         if (currentList.length > 0 && !isOrdered) flushList();
         isOrdered = true;
@@ -563,7 +563,7 @@ export default function App() {
         currentList.push(trimmed.slice(2));
       } else {
         flushList();
-        elements.push(<p key={index} style={{ margin: '0 0 8px 0', fontSize: '0.88rem', lineHeight: 1.55 }}>{formatInline(trimmed)}</p>);
+        elements.push(<p key={`p-${index}`} style={{ margin: '0 0 8px 0', fontSize: '0.88rem', lineHeight: 1.55 }}>{formatInline(trimmed)}</p>);
       }
     });
 
@@ -1404,28 +1404,27 @@ export default function App() {
 
   // Generate pagination button sequence with ellipsis
   const getDirPageNumbers = () => {
-    const pages = [];
-    const maxButtons = 5;
-    if (totalDirPages <= maxButtons + 2) {
-      for (let i = 1; i <= totalDirPages; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      let start = Math.max(2, dirPage - 1);
-      let end = Math.min(totalDirPages - 1, dirPage + 1);
-
-      if (dirPage <= 3) {
-        start = 2;
-        end = 4;
-      } else if (dirPage >= totalDirPages - 2) {
-        start = totalDirPages - 3;
-        end = totalDirPages - 1;
-      }
-
-      if (start > 2) pages.push('ellipsis-start');
-      for (let i = start; i <= end; i++) pages.push(i);
-      if (end < totalDirPages - 1) pages.push('ellipsis-end');
-      pages.push(totalDirPages);
+    if (totalDirPages <= 7) {
+      return Array.from({ length: totalDirPages }, (_, i) => i + 1);
     }
+    const pages = [1];
+    let start = Math.max(2, dirPage - 1);
+    let end = Math.min(totalDirPages - 1, dirPage + 1);
+
+    if (dirPage <= 3) {
+      start = 2;
+      end = 4;
+    } else if (dirPage >= totalDirPages - 2) {
+      start = totalDirPages - 3;
+      end = totalDirPages - 1;
+    }
+
+    if (start > 2) pages.push('ellipsis-start');
+    for (let i = start; i <= end; i++) {
+      if (!pages.includes(i)) pages.push(i);
+    }
+    if (end < totalDirPages - 1) pages.push('ellipsis-end');
+    if (!pages.includes(totalDirPages)) pages.push(totalDirPages);
     return pages;
   };
 
@@ -2388,11 +2387,11 @@ export default function App() {
                   <div className="pagination-numbers">
                     {getDirPageNumbers().map((p, idx) => {
                       if (typeof p === 'string') {
-                        return <span key={idx} className="pagination-ellipsis">...</span>;
+                        return <span key={`dir-ellipsis-${p}-${idx}`} className="pagination-ellipsis">...</span>;
                       }
                       return (
                         <button
-                          key={p}
+                          key={`dir-page-${p}`}
                           className={`pagination-num-btn ${p === dirPage ? 'active' : ''}`}
                           onClick={() => setDirPage(p)}
                         >
